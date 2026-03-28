@@ -641,12 +641,23 @@ const char *InterpImpl::getVar(const std::string &name) const {
     if (!callStack.empty()) {
         const auto &frame = callStack.back();
 
-        // Check for upvar link
+        // Check for upvar link (exact name or array base name)
         auto linkIt = frame.upvarLinks.find(name);
         if (linkIt != frame.upvarLinks.end()) {
             int targetFrame = linkIt->second.first;
             const std::string &targetName = linkIt->second.second;
             return getVarInFrame(targetFrame, targetName);
+        }
+        // Array access: check if base name has an upvar link
+        auto paren = name.find('(');
+        if (paren != std::string::npos) {
+            std::string baseName = name.substr(0, paren);
+            linkIt = frame.upvarLinks.find(baseName);
+            if (linkIt != frame.upvarLinks.end()) {
+                int targetFrame = linkIt->second.first;
+                std::string targetName = linkIt->second.second + name.substr(paren);
+                return getVarInFrame(targetFrame, targetName);
+            }
         }
 
         auto it = frame.locals.find(name);
@@ -669,13 +680,25 @@ void InterpImpl::setVar(const std::string &name, const std::string &value) {
     if (!callStack.empty()) {
         auto &frame = callStack.back();
 
-        // Check for upvar link
+        // Check for upvar link (exact name or array base name)
         auto linkIt = frame.upvarLinks.find(name);
         if (linkIt != frame.upvarLinks.end()) {
             int targetFrame = linkIt->second.first;
             const std::string &targetName = linkIt->second.second;
             setVarInFrame(targetFrame, targetName, value);
             return;
+        }
+        // Array access: check if base name has an upvar link
+        auto paren = name.find('(');
+        if (paren != std::string::npos) {
+            std::string baseName = name.substr(0, paren);
+            linkIt = frame.upvarLinks.find(baseName);
+            if (linkIt != frame.upvarLinks.end()) {
+                int targetFrame = linkIt->second.first;
+                std::string targetName = linkIt->second.second + name.substr(paren);
+                setVarInFrame(targetFrame, targetName, value);
+                return;
+            }
         }
 
         frame.locals[name] = value;

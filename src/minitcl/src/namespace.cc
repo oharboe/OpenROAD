@@ -296,21 +296,28 @@ static int uplevelCmd(ClientData, Tcl_Interp *interp, int objc,
 static int variableCmd(ClientData, Tcl_Interp *interp, int objc,
                         Tcl_Obj *const objv[]) {
     // In a namespace, "variable" declares namespace-scoped variables.
-    // In minitcl, we treat them as globals.
+    // The variable is stored as a global with a namespace-qualified name.
     auto *impl = getImpl(interp);
 
     for (int i = 1; i < objc; i++) {
         const char *varName = Tcl_GetString(objv[i]);
+
+        // Qualify with current namespace for storage
+        std::string qualName = varName;
+        if (impl->currentNamespace != "::" && !impl->currentNamespace.empty() &&
+            (qualName.size() < 2 || qualName[0] != ':' || qualName[1] != ':')) {
+            qualName = impl->currentNamespace.substr(2) + "::" + qualName;
+        }
+
         // If next arg exists and is a value, set it
         if (i + 1 < objc) {
             const char *next = Tcl_GetString(objv[i + 1]);
-            // Heuristic: if not another variable declaration, treat as value
-            Tcl_SetVar(interp, varName, next, TCL_GLOBAL_ONLY);
+            Tcl_SetVar(interp, qualName.c_str(), next, TCL_GLOBAL_ONLY);
             i++;
         }
-        // If in a proc, create upvar link to global
+        // If in a proc, create upvar link to the namespace-qualified global
         if (!impl->callStack.empty()) {
-            impl->callStack.back().upvarLinks[varName] = {-1, varName};
+            impl->callStack.back().upvarLinks[varName] = {-1, qualName};
         }
     }
     return TCL_OK;

@@ -725,17 +725,7 @@ void Tcl_StaticPackage(Tcl_Interp *, const char *, Tcl_AppInitProc *,
     // No-op
 }
 
-// ============================================================
-// Regular expressions (stubs - Phase 8)
-// ============================================================
-
-Tcl_RegExp Tcl_GetRegExpFromObj(Tcl_Interp *, Tcl_Obj *, int) {
-    return nullptr;  // TODO: Phase 8
-}
-
-int Tcl_RegExpExec(Tcl_Interp *, Tcl_RegExp, const char *, const char *) {
-    return 0;  // TODO: Phase 8
-}
+// Regexp C API now in regexp.cc
 
 // ============================================================
 // Channels (stubs - Phase 13)

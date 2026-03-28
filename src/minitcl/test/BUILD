@@ -50,6 +50,7 @@ load("@rules_shell//shell:sh_test.bzl", "sh_test")
 _OPENROAD_TCL_TESTS = {
     "tcl_cts": ["//test:regression_resources"],
     "tcl_floorplan": ["//test:regression_resources"],
+    "tcl_full_flow": ["//test:regression_resources"],
     "tcl_placement": ["//test:regression_resources"],
     "tcl_read_design": ["//test:regression_resources"],
     "tcl_route": ["//test:regression_resources"],

@@ -20,6 +20,7 @@ load("@rules_cc//cc:cc_test.bzl", "cc_test")
     "string_test",
     "list_test",
     "regexp_test",
+    "namespace_test",
 ]]
 
 # Tests that need access to internal headers

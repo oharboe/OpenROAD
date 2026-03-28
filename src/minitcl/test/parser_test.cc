@@ -258,9 +258,8 @@ TEST(ParserTest, BareWordWithDollar) {
 TEST(ParserTest, BareWordWithBrackets) {
     auto cmds = parse("set x [expr 1+2]");
     ASSERT_EQ(cmds.size(), 1u);
-    EXPECT_EQ(cmds[0].words[2].text, "[expr");
-    // Note: bare word parsing doesn't match brackets
-    // The eval layer handles bracket matching
+    ASSERT_EQ(cmds[0].words.size(), 3u);
+    EXPECT_EQ(cmds[0].words[2].text, "[expr 1+2]");
 }
 
 TEST(ParserTest, BareWordWithBackslashEscape) {

@@ -2,6 +2,8 @@
 // MiniTcl - Interpreter lifecycle and stubs
 
 #include "interp.h"
+#include "eval.h"
+#include "parser.h"
 
 #include <cstdarg>
 #include <cstdio>
@@ -26,7 +28,9 @@ static Tcl_Interp *toInterp(InterpImpl *impl) {
 
 Tcl_Interp *Tcl_CreateInterp(void) {
     auto *impl = new minitcl::InterpImpl();
-    return reinterpret_cast<Tcl_Interp *>(impl);
+    auto *interp = reinterpret_cast<Tcl_Interp *>(impl);
+    minitcl::registerBuiltins(interp);
+    return interp;
 }
 
 void Tcl_DeleteInterp(Tcl_Interp *interp) {
@@ -78,11 +82,39 @@ void Tcl_Main(int argc, char **argv, Tcl_AppInitProc *appInitProc) {
 // ============================================================
 
 int Tcl_Eval(Tcl_Interp *interp, const char *script) {
-    (void)script;
-    auto *impl = minitcl::getImpl(interp);
-    impl->result = "";
-    // TODO: implement in Phase 3
-    return TCL_OK;
+    if (!script || !*script) return TCL_OK;
+
+    auto commands = minitcl::parseScript(script);
+    int code = TCL_OK;
+
+    for (const auto &cmd : commands) {
+        if (cmd.words.empty()) continue;
+
+        // Perform substitution on each word
+        std::vector<std::string> words;
+        words.reserve(cmd.words.size());
+
+        for (const auto &word : cmd.words) {
+            if (word.braced) {
+                // Braced words: no substitution
+                words.push_back(word.text);
+            } else {
+                // Perform variable and command substitution
+                int subCode = TCL_OK;
+                std::string substituted =
+                    minitcl::substitute(interp, word.text, &subCode);
+                if (subCode != TCL_OK) return subCode;
+
+                // Also do backslash substitution on non-braced words
+                words.push_back(minitcl::backslashSubst(substituted));
+            }
+        }
+
+        code = minitcl::evalCommand(interp, words);
+        if (code != TCL_OK) return code;
+    }
+
+    return code;
 }
 
 int Tcl_EvalFile(Tcl_Interp *interp, const char *fileName) {

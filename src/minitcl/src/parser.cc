@@ -84,11 +84,37 @@ static bool parseBareWord(const char *&p, std::string &out) {
         } else if (*p == '\\' && *(p + 1)) {
             out += *p++;
             out += *p++;
+        } else if (*p == '[') {
+            // Command substitution brackets - consume until matching ]
+            out += *p++;
+            int depth = 1;
+            while (*p && depth > 0) {
+                if (*p == '[') depth++;
+                else if (*p == ']') {
+                    depth--;
+                    if (depth == 0) { out += *p++; break; }
+                } else if (*p == '\\' && *(p + 1)) {
+                    out += *p++;
+                    out += *p++;
+                    continue;
+                } else if (*p == '{') {
+                    // Braces inside brackets
+                    out += *p++;
+                    int bd = 1;
+                    while (*p && bd > 0) {
+                        if (*p == '{') bd++;
+                        else if (*p == '}') bd--;
+                        if (bd > 0 || *p != '}') out += *p;
+                        p++;
+                    }
+                    out += '}';
+                    continue;
+                }
+                if (depth > 0) out += *p++;
+            }
         } else if (*p == '{') {
-            // Brace in middle of word - just a literal char
             out += *p++;
         } else if (*p == '"') {
-            // Quote in middle of word - just a literal char
             out += *p++;
         } else {
             out += *p++;

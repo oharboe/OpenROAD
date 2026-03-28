@@ -75,7 +75,14 @@ class ExprParser {
     int code_;
 
     void skipWS() {
-        while (*p_ == ' ' || *p_ == '\t' || *p_ == '\n' || *p_ == '\r') p_++;
+        while (*p_ == ' ' || *p_ == '\t' || *p_ == '\n' || *p_ == '\r' ||
+               (*p_ == '\\' && *(p_ + 1) == '\n')) {
+            if (*p_ == '\\' && *(p_ + 1) == '\n') {
+                p_ += 2;  // skip backslash-newline continuation
+            } else {
+                p_++;
+            }
+        }
     }
 
     void error(const std::string &msg) {

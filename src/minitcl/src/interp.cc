@@ -78,6 +78,9 @@ void Tcl_Main(int argc, char **argv, Tcl_AppInitProc *appInitProc) {
         }
     }
 
+    // Import sta namespace commands to global scope (like real Tcl's init_sta_cmds)
+    Tcl_Eval(interp, "namespace import sta::*");
+
     // If a script file was provided as argv[1], source it
     if (argc >= 2 && argv[1] && argv[1][0] != '\0') {
         int code = Tcl_EvalFile(interp, argv[1]);

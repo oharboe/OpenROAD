@@ -105,9 +105,12 @@ void Tcl_SetErrorCode(Tcl_Interp *interp, ...) {
 // Hash table stubs (minimal - SWIG uses these for type tracking)
 // ============================================================
 
-// Simple implementation using a map stored in the table pointer
+// Hash table using a map of heap-allocated entries for stable pointers
 struct HashTableImpl {
-    std::map<std::string, ClientData> entries;
+    std::map<std::string, Tcl_HashEntry *> entries;
+    ~HashTableImpl() {
+        for (auto &[k, e] : entries) delete e;
+    }
 };
 
 void Tcl_InitHashTable(Tcl_HashTable *tablePtr, int) {
@@ -126,28 +129,25 @@ void Tcl_DeleteHashTable(Tcl_HashTable *tablePtr) {
 Tcl_HashEntry *Tcl_CreateHashEntry(Tcl_HashTable *tablePtr,
                                     const char *key, int *newPtr) {
     auto *impl = reinterpret_cast<HashTableImpl *>(tablePtr->buckets);
-    bool isNew = (impl->entries.find(key) == impl->entries.end());
-    if (newPtr) *newPtr = isNew ? 1 : 0;
-    impl->entries[key] = nullptr;  // will be set via SetHashValue
+    auto it = impl->entries.find(key);
+    if (it != impl->entries.end()) {
+        if (newPtr) *newPtr = 0;
+        return it->second;
+    }
+    if (newPtr) *newPtr = 1;
+    auto *entry = new Tcl_HashEntry();
+    entry->key = key;
+    entry->clientData = nullptr;
+    impl->entries[key] = entry;
     tablePtr->numEntries = impl->entries.size();
-
-    // Return a stable pointer - use a static entry
-    // This is a simplification; real Tcl allocates per-entry
-    static thread_local Tcl_HashEntry entry;
-    entry.key = key;
-    entry.clientData = nullptr;
-    return &entry;
+    return entry;
 }
 
 Tcl_HashEntry *Tcl_FindHashEntry(Tcl_HashTable *tablePtr, const char *key) {
     auto *impl = reinterpret_cast<HashTableImpl *>(tablePtr->buckets);
     auto it = impl->entries.find(key);
     if (it == impl->entries.end()) return nullptr;
-
-    static thread_local Tcl_HashEntry entry;
-    entry.key = key;
-    entry.clientData = it->second;
-    return &entry;
+    return it->second;
 }
 
 void Tcl_DeleteHashEntry(Tcl_HashEntry *) {

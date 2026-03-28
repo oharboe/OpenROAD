@@ -12,4 +12,5 @@ load("@rules_cc//cc:cc_test.bzl", "cc_test")
     ],
 ) for test_name in [
     "interp_test",
+    "obj_test",
 ]]

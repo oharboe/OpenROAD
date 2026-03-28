@@ -96,8 +96,10 @@ Tcl_Channel Tcl_GetStdChannel(int type) {
 Tcl_Channel Tcl_StackChannel(Tcl_Interp *, const Tcl_ChannelType *typePtr,
                               ClientData instanceData, int mask,
                               Tcl_Channel prevChan) {
+    if (!typePtr) return prevChan;
     auto *prev = static_cast<minitcl::ChannelImpl *>(prevChan);
     auto *stacked = new minitcl::ChannelImpl();
+    memset(stacked, 0, sizeof(*stacked));
     stacked->type = typePtr;
     stacked->instanceData = instanceData;
     stacked->mask = mask;

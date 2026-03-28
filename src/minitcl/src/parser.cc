@@ -319,8 +319,8 @@ std::string backslashSubst(const std::string &str) {
                     result += static_cast<char>(
                         strtol(oct.c_str(), nullptr, 8));
                 } else {
-                    // Unknown escape: keep the backslash
-                    result += '\\';
+                    // Unknown escape: in Tcl, \X becomes X for any
+                    // unrecognized X (the backslash is consumed)
                     result += next;
                 }
                 break;

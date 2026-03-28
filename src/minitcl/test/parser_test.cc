@@ -379,9 +379,10 @@ TEST(BackslashSubstTest, MultipleEscapes) {
     EXPECT_EQ(backslashSubst("\\t\\n\\\\"), "\t\n\\");
 }
 
-TEST(BackslashSubstTest, UnknownEscapePreserved) {
-    // Unknown escape sequences keep the backslash
-    EXPECT_EQ(backslashSubst("\\q"), "\\q");
+TEST(BackslashSubstTest, UnknownEscapeConsumed) {
+    // In Tcl, unknown escape sequences consume the backslash: \q -> q
+    EXPECT_EQ(backslashSubst("\\q"), "q");
+    EXPECT_EQ(backslashSubst("\\#"), "#");
 }
 
 // ============================================================

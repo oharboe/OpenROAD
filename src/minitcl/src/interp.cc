@@ -33,6 +33,18 @@ Tcl_Interp *Tcl_CreateInterp(void) {
     auto *interp = reinterpret_cast<Tcl_Interp *>(impl);
     minitcl::initChannels();
     minitcl::registerBuiltins(interp);
+
+    // Populate ::env array from process environment
+    extern char **environ;
+    for (char **ep = environ; ep && *ep; ep++) {
+        std::string entry = *ep;
+        auto eq = entry.find('=');
+        if (eq != std::string::npos) {
+            std::string key = "env(" + entry.substr(0, eq) + ")";
+            impl->globals[key] = entry.substr(eq + 1);
+        }
+    }
+
     return interp;
 }
 

@@ -53,7 +53,7 @@ cc_library(
         "@boost.container_hash",
         "@boost.random",
         "@boost.stacktrace",
-        "@tcl_lang//:tcl",
+        "//src/minitcl",
     ],
 )
 

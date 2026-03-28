@@ -51,7 +51,7 @@ cc_library(
         "//:ord",
         "//src/odb",
         "//src/utl",
-        "@tcl_lang//:tcl",
+        "//src/minitcl",
     ],
 )
 

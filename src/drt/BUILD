@@ -283,7 +283,7 @@ cc_library(
         "@boost.polygon",
         "@boost.serialization",
         "@boost.stacktrace",
-        "@tcl_lang//:tcl",
+        "//src/minitcl",
     ],
 )
 

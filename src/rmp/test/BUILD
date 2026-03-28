@@ -158,7 +158,7 @@ cc_test(
         "@abc",
         "@googletest//:gtest",
         "@googletest//:gtest_main",
-        "@tcl_lang//:tcl",
+        "//src/minitcl",
     ],
 )
 
@@ -189,7 +189,7 @@ cc_test(
         "@abc",
         "@googletest//:gtest",
         "@googletest//:gtest_main",
-        "@tcl_lang//:tcl",
+        "//src/minitcl",
     ],
 )
 

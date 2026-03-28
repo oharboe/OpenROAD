@@ -41,9 +41,7 @@ cc_library(
     srcs = [
         "InitRunFiles.cpp",
     ],
-    data = [
-        "@tcl_lang//:tcl_core",
-    ],
+    data = [],
     visibility = ["//visibility:public"],
     deps = [
         "@rules_cc//cc/runfiles",

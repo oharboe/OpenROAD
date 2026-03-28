@@ -92,7 +92,7 @@ cc_library(
         "@boost.iterator",
         "@boost.random",
         "@spdlog",
-        "@tcl_lang//:tcl",
+        "//src/minitcl",
     ],
 )
 
@@ -155,7 +155,7 @@ cc_library(
         "@boost.stacktrace",
         "@rules_python//python/cc:current_py_cc_headers",
         "@spdlog",
-        "@tcl_lang//:tcl",
+        "//src/minitcl",
     ],
 )
 

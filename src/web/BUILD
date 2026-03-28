@@ -55,7 +55,7 @@ cc_library(
         "@boost.asio",
         "@boost.beast",
         "@boost.geometry",
-        "@tcl_lang//:tcl",
+        "//src/minitcl",
     ],
 )
 
@@ -79,7 +79,7 @@ cc_library(
         "//src/odb",
         "//src/utl",
         "@boost.stacktrace",
-        "@tcl_lang//:tcl",
+        "//src/minitcl",
     ],
 )
 

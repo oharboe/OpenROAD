@@ -118,7 +118,7 @@ cc_library(
         "@boost.multi_array",
         "@boost.stacktrace",
         "@spdlog",
-        "@tcl_lang//:tcl",
+        "//src/minitcl",
     ],
 )
 

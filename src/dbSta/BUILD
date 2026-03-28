@@ -30,7 +30,7 @@ cc_library(
         "@abseil-cpp//absl/synchronization",
         "@boost.json",
         "@spdlog",
-        "@tcl_lang//:tcl",
+        "//src/minitcl",
     ],
 )
 
@@ -160,7 +160,7 @@ cc_library(
         "//src/utl",
         "@boost.json",
         "@boost.stacktrace",
-        "@tcl_lang//:tcl",
+        "//src/minitcl",
     ],
 )
 

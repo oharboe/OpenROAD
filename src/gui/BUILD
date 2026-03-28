@@ -53,7 +53,7 @@ cc_library(
         "@boost.algorithm",
         "@boost.multi_array",
         "@spdlog",
-        "@tcl_lang//:tcl",
+        "//src/minitcl",
     ],
 )
 
@@ -113,7 +113,7 @@ QT_GUI_PLATFORMS = {
             "@boost.multi_array",
             "@boost.stacktrace",
             "@spdlog",
-            "@tcl_lang//:tcl",
+            "//src/minitcl",
         ] + ([":uic_lib"] if platform == "headless" else []),
     )
     for platform, suffix in QT_GUI_PLATFORMS.items()

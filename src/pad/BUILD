@@ -46,7 +46,7 @@ cc_library(
         "@boost.icl",
         "@boost.polygon",
         "@boost.stacktrace",
-        "@tcl_lang//:tcl",
+        "//src/minitcl",
     ],
 )
 

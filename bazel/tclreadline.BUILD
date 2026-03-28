@@ -100,7 +100,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "@readline",
-        "@tcl_lang//:tcl",
+        "//src/minitcl",
     ],
 )
 

@@ -105,7 +105,7 @@ cc_library(
         "@boost.stacktrace",
         "@boost.tokenizer",
         "@boost.utility",
-        "@tcl_lang//:tcl",
+        "//src/minitcl",
     ],
 )
 

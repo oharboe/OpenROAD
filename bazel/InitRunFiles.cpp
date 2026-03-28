@@ -55,15 +55,7 @@ class BazelInitializer
       std::exit(1);
     }
 
-    // Set the TCL_LIBRARY environment variable
-    const std::string tcl_path = runfiles->Rlocation("tcl_lang/library/");
-    if (!tcl_path.empty()) {
-      setenv("TCL_LIBRARY", tcl_path.c_str(), true);
-    } else {
-      std::cerr << "Error: Could not locate 'tcl_lang/library/' in runfiles."
-                << std::endl;
-      std::exit(1);
-    }
+    // minitcl: no TCL_LIBRARY needed (embedded interpreter)
 
     // Setup env variables for any other libraries that use runfiles
     std::string manifest = program_location + ".runfiles/MANIFEST";

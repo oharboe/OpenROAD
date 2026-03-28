@@ -8,6 +8,12 @@
 #include <fstream>
 #include <gtest/gtest.h>
 
+// Ensure project tmp/ exists for test files
+static void ensureTmpDir() {
+    std::filesystem::create_directories(
+        std::filesystem::current_path() / "tmp");
+}
+
 // ============================================================
 // file subcommands
 // ============================================================
@@ -64,8 +70,8 @@ TEST(FileTest, IsDirectory) {
 // source and Tcl_EvalFile
 // ============================================================
 TEST(FileTest, SourceFile) {
-    // Create a temp file
-    auto tmpPath = std::filesystem::temp_directory_path() / "minitcl_test.tcl";
+    ensureTmpDir();
+    auto tmpPath = std::filesystem::current_path() / "tmp" / "minitcl_test.tcl";
     {
         std::ofstream f(tmpPath);
         f << "set x 42\nset y hello\n";
@@ -84,7 +90,8 @@ TEST(FileTest, SourceNonexistent) {
     Tcl_DeleteInterp(i);
 }
 TEST(FileTest, EvalFile) {
-    auto tmpPath = std::filesystem::temp_directory_path() / "minitcl_evalfile.tcl";
+    ensureTmpDir();
+    auto tmpPath = std::filesystem::current_path() / "tmp" / "minitcl_evalfile.tcl";
     {
         std::ofstream f(tmpPath);
         f << "set result 99\n";
@@ -100,7 +107,8 @@ TEST(FileTest, EvalFile) {
 // open, close, gets, read, eof
 // ============================================================
 TEST(IOTest, OpenReadClose) {
-    auto tmpPath = std::filesystem::temp_directory_path() / "minitcl_io_test.txt";
+    ensureTmpDir();
+    auto tmpPath = std::filesystem::current_path() / "tmp" / "minitcl_io_test.txt";
     {
         std::ofstream f(tmpPath);
         f << "line1\nline2\n";

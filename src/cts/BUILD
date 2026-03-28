@@ -99,7 +99,7 @@ cc_library(
         "//src/rsz",
         "//src/utl",
         "@boost.stacktrace",
-        "@tcl_lang//:tcl",
+        "//src/minitcl",
     ],
 )
 

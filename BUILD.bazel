@@ -187,7 +187,7 @@ cc_binary(
         "//src/utl",
         "@boost.stacktrace",
         "@rules_cc//cc/runfiles",
-        "@tcl_lang//:tcl",
+        "//src/minitcl",
         # tclreadline: provides ENABLE_READLINE define + links libtclreadline.
         # On systems without tclreadline these are empty stub targets (no-op).
         # See: https://github.com/The-OpenROAD-Project/OpenROAD/issues/7115
@@ -225,7 +225,7 @@ cc_library(
         "@abseil-cpp//absl/base:core_headers",
         "@abseil-cpp//absl/synchronization",
         "@boost.stacktrace",
-        "@tcl_lang//:tcl",
+        "//src/minitcl",
     ] + OPENROAD_LIBRARY_DEPS,
 )
 

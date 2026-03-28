@@ -320,6 +320,21 @@ static int cdCmd(ClientData, Tcl_Interp *interp, int objc,
 }
 
 // ============================================================
+// exit command
+// ============================================================
+
+static int exitCmd(ClientData, Tcl_Interp *interp, int objc,
+                    Tcl_Obj *const objv[]) {
+    int code = 0;
+    if (objc >= 2) {
+        if (Tcl_GetIntFromObj(interp, objv[1], &code) != TCL_OK)
+            return TCL_ERROR;
+    }
+    std::exit(code);
+    return TCL_OK;  // unreachable
+}
+
+// ============================================================
 // auto_path variable and unknown handler
 // ============================================================
 
@@ -344,6 +359,7 @@ void registerMiscCommands(Tcl_Interp *interp) {
     Tcl_CreateObjCommand(interp, "pid", pidCmd, nullptr, nullptr);
     Tcl_CreateObjCommand(interp, "pwd", pwdCmd, nullptr, nullptr);
     Tcl_CreateObjCommand(interp, "cd", cdCmd, nullptr, nullptr);
+    Tcl_CreateObjCommand(interp, "exit", exitCmd, nullptr, nullptr);
     Tcl_CreateObjCommand(interp, "unknown", unknownHandler, nullptr, nullptr);
 
     // Set auto_path variable

@@ -131,11 +131,17 @@ class ExprParser {
             if (*p_ == '=' && *(p_ + 1) == '=') {
                 p_ += 2;
                 ExprVal r = parseRelational();
-                v = ExprVal::makeInt(v.asDouble() == r.asDouble());
+                if (v.type == ExprVal::STRING || r.type == ExprVal::STRING)
+                    v = ExprVal::makeInt(v.toString() == r.toString());
+                else
+                    v = ExprVal::makeInt(v.asDouble() == r.asDouble());
             } else if (*p_ == '!' && *(p_ + 1) == '=') {
                 p_ += 2;
                 ExprVal r = parseRelational();
-                v = ExprVal::makeInt(v.asDouble() != r.asDouble());
+                if (v.type == ExprVal::STRING || r.type == ExprVal::STRING)
+                    v = ExprVal::makeInt(v.toString() != r.toString());
+                else
+                    v = ExprVal::makeInt(v.asDouble() != r.asDouble());
             } else if (*p_ == 'e' && *(p_ + 1) == 'q' && !isalnum(*(p_ + 2))) {
                 p_ += 2;
                 ExprVal r = parseRelational();
@@ -451,13 +457,7 @@ static int exprCmd(ClientData, Tcl_Interp *interp, int objc,
         expr += Tcl_GetString(objv[i]);
     }
 
-    // Perform variable and command substitution first
-    int subCode = TCL_OK;
-    std::string substituted = substitute(interp, expr, &subCode);
-    if (subCode != TCL_OK) return subCode;
-    substituted = backslashSubst(substituted);
-
-    ExprParser parser(interp, substituted.c_str());
+    ExprParser parser(interp, expr.c_str());
     ExprVal result = parser.parse();
     if (parser.code() != TCL_OK) return parser.code();
 

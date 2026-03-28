@@ -2,6 +2,7 @@
 // MiniTcl - Interpreter lifecycle and stubs
 
 #include "interp.h"
+#include "channel.h"
 #include "eval.h"
 #include "parser.h"
 #include "vfs.h"
@@ -30,6 +31,7 @@ static Tcl_Interp *toInterp(InterpImpl *impl) {
 Tcl_Interp *Tcl_CreateInterp(void) {
     auto *impl = new minitcl::InterpImpl();
     auto *interp = reinterpret_cast<Tcl_Interp *>(impl);
+    minitcl::initChannels();
     minitcl::registerBuiltins(interp);
     return interp;
 }
@@ -745,39 +747,7 @@ void Tcl_StaticPackage(Tcl_Interp *, const char *, Tcl_AppInitProc *,
 
 // Regexp C API now in regexp.cc
 
-// ============================================================
-// Channels (stubs - Phase 13)
-// ============================================================
-
-Tcl_Channel Tcl_GetStdChannel(int) {
-    return nullptr;  // TODO: Phase 13
-}
-
-Tcl_Channel Tcl_StackChannel(Tcl_Interp *, const Tcl_ChannelType *,
-                              ClientData, int, Tcl_Channel) {
-    return nullptr;  // TODO: Phase 13
-}
-
-int Tcl_UnstackChannel(Tcl_Interp *, Tcl_Channel) {
-    return TCL_OK;  // TODO: Phase 13
-}
-
-int Tcl_Flush(Tcl_Channel) {
-    return TCL_OK;  // TODO: Phase 13
-}
-
-const Tcl_ChannelType *Tcl_GetChannelType(Tcl_Channel) {
-    return nullptr;  // TODO: Phase 13
-}
-
-ClientData Tcl_GetChannelInstanceData(Tcl_Channel) {
-    return nullptr;  // TODO: Phase 13
-}
-
-Tcl_DriverOutputProc *Tcl_ChannelOutputProc(const Tcl_ChannelType *typePtr) {
-    if (typePtr) return typePtr->outputProc;
-    return nullptr;
-}
+// Channel C API now in channel.cc
 
 // ============================================================
 // DString

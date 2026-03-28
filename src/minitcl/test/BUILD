@@ -14,3 +14,14 @@ load("@rules_cc//cc:cc_test.bzl", "cc_test")
     "interp_test",
     "obj_test",
 ]]
+
+# Parser test needs access to internal headers
+cc_test(
+    name = "parser_test",
+    srcs = ["parser_test.cc"],
+    includes = ["../"],
+    deps = [
+        "//src/minitcl",
+        "@googletest//:gtest_main",
+    ],
+)

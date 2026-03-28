@@ -137,8 +137,17 @@ void Tcl_Main(int argc, char **argv, Tcl_AppInitProc *appInitProc) {
 // Evaluation (stubs - implemented in Phase 3)
 // ============================================================
 
+static thread_local int evalDepth = 0;
+
 int Tcl_Eval(Tcl_Interp *interp, const char *script) {
     if (!script || !*script) return TCL_OK;
+
+    if (++evalDepth > 500) {
+        --evalDepth;
+        auto *impl = minitcl::getImpl(interp);
+        impl->result = "too many nested evaluations (infinite loop?)";
+        return TCL_ERROR;
+    }
 
     auto commands = minitcl::parseScript(script);
     int code = TCL_OK;
@@ -167,9 +176,10 @@ int Tcl_Eval(Tcl_Interp *interp, const char *script) {
         }
 
         code = minitcl::evalCommand(interp, words);
-        if (code != TCL_OK) return code;
+        if (code != TCL_OK) { --evalDepth; return code; }
     }
 
+    --evalDepth;
     return code;
 }
 

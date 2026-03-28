@@ -11,11 +11,9 @@
 
 namespace minitcl {
 
-// Current namespace tracking (simple string-based)
+// Access current namespace from InterpImpl
 static std::string &currentNamespace(InterpImpl *impl) {
-    static std::string ns = "::";
-    (void)impl;
-    return ns;
+    return impl->currentNamespace;
 }
 
 // Resolve a command name relative to the current namespace
@@ -98,16 +96,21 @@ static int namespaceCmd(ClientData, Tcl_Interp *interp, int objc,
             size_t starPos = pattern.find('*');
             if (starPos != std::string::npos) {
                 std::string prefix = pattern.substr(0, starPos);
+                // Normalize: strip leading :: from prefix for matching
+                std::string matchPrefix = prefix;
+                if (matchPrefix.size() >= 2 && matchPrefix[0] == ':' && matchPrefix[1] == ':')
+                    matchPrefix = matchPrefix.substr(2);
                 for (auto &[name, cmd] : impl->commands) {
-                    std::string qualName = "::" + name;
-                    if (qualName.find(prefix) == 0) {
+                    if (name.find(matchPrefix) == 0) {
                         // Extract short name (after last ::)
                         size_t lastColon = name.rfind("::");
                         std::string shortName = (lastColon != std::string::npos)
                             ? name.substr(lastColon + 2)
                             : name;
                         if (shortName != name) {
-                            impl->commands[shortName] = cmd;
+                            auto imported = cmd;
+                            imported.deleteProc = nullptr;  // avoid double-free
+                            impl->commands[shortName] = imported;
                         }
                     }
                 }
@@ -120,7 +123,9 @@ static int namespaceCmd(ClientData, Tcl_Interp *interp, int objc,
                     if (qualName.substr(0, 2) == "::") qualName = qualName.substr(2);
                     auto it = impl->commands.find(qualName);
                     if (it != impl->commands.end()) {
-                        impl->commands[shortName] = it->second;
+                        auto imported = it->second;
+                        imported.deleteProc = nullptr;  // avoid double-free
+                        impl->commands[shortName] = imported;
                     }
                 }
             }

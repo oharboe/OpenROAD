@@ -185,6 +185,13 @@ int evalCommand(Tcl_Interp *interp, const std::vector<std::string> &words) {
         // Try without leading ::
         it = impl->commands.find(cmdName.substr(2));
     }
+    // Try qualifying with current namespace (e.g., "foo" -> "sta::foo")
+    if (it == impl->commands.end() &&
+        impl->currentNamespace != "::" && !impl->currentNamespace.empty() &&
+        (cmdName.size() < 2 || cmdName[0] != ':' || cmdName[1] != ':')) {
+        std::string qualified = impl->currentNamespace.substr(2) + "::" + cmdName;
+        it = impl->commands.find(qualified);
+    }
     if (it == impl->commands.end()) {
         // Try stripping namespace prefix (e.g., "sta::foo" -> "foo")
         size_t lastColon = cmdName.rfind("::");
@@ -321,12 +328,21 @@ static int procCmd(ClientData, Tcl_Interp *interp, int objc,
     }
 
     auto *impl = getImpl(interp);
-    const char *name = Tcl_GetString(objv[1]);
+    const char *rawName = Tcl_GetString(objv[1]);
     const char *argsStr = Tcl_GetString(objv[2]);
     const char *body = Tcl_GetString(objv[3]);
 
+    // Qualify proc name with current namespace if not already qualified
+    std::string qualifiedName = rawName;
+    if (impl->currentNamespace != "::" && !impl->currentNamespace.empty() &&
+        (qualifiedName.size() < 2 || qualifiedName[0] != ':' || qualifiedName[1] != ':')) {
+        qualifiedName = impl->currentNamespace.substr(2) + "::" + qualifiedName;
+    }
+    const char *name = qualifiedName.c_str();
+
     ProcDef proc;
     proc.body = body;
+    proc.definingNamespace = impl->currentNamespace;
 
     // Parse parameter list
     auto paramWords = parseScript(argsStr);
@@ -428,9 +444,12 @@ static int procCmd(ClientData, Tcl_Interp *interp, int objc,
                 return TCL_ERROR;
             }
 
-            // Push frame and evaluate body
+            // Push frame and evaluate body in defining namespace
             impl->callStack.push_back(std::move(frame));
+            std::string savedNs = impl->currentNamespace;
+            impl->currentNamespace = proc.definingNamespace;
             int code = Tcl_Eval(interp, proc.body.c_str());
+            impl->currentNamespace = savedNs;
             impl->callStack.pop_back();
 
             // TCL_RETURN becomes TCL_OK at proc boundary

@@ -25,6 +25,7 @@ struct ProcDef {
     std::vector<bool> hasDefault;              // whether param has default
     bool hasArgs = false;                       // last param is "args"
     std::string body;
+    std::string definingNamespace = "::";        // namespace where proc was defined
 };
 
 // Internal interpreter state
@@ -56,6 +57,9 @@ struct InterpImpl {
     std::map<std::string, ProcDef> procs;
 
     bool deleted = false;
+
+    // Current namespace ("::" = global)
+    std::string currentNamespace = "::";
 
     // Get/set variable respecting scope
     const char *getVar(const std::string &name) const;

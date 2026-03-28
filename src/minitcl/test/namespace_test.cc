@@ -12,8 +12,8 @@ TEST(NamespaceTest, EvalDefinesProc) {
     Tcl_Interp* i = Tcl_CreateInterp();
     ASSERT_EQ(Tcl_Eval(i,
         "namespace eval myns { proc greet {} { return hello } }"), TCL_OK);
-    // The proc should be callable (registered in myns namespace or globally)
-    ASSERT_EQ(Tcl_Eval(i, "greet"), TCL_OK);
+    // The proc should be callable with its namespace-qualified name
+    ASSERT_EQ(Tcl_Eval(i, "myns::greet"), TCL_OK);
     EXPECT_STREQ(Tcl_GetStringResult(i), "hello");
     Tcl_DeleteInterp(i);
 }
@@ -165,7 +165,7 @@ TEST(NamespaceTest, StaPattern) {
         }
     )"), TCL_OK);
 
-    ASSERT_EQ(Tcl_Eval(i, "check_argc_eq0 test 0"), TCL_OK);
+    ASSERT_EQ(Tcl_Eval(i, "sta::check_argc_eq0 test 0"), TCL_OK);
     EXPECT_STREQ(Tcl_GetStringResult(i), "ok");
     Tcl_DeleteInterp(i);
 }

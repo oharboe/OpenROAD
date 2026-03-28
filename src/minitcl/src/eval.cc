@@ -543,6 +543,25 @@ static int globalCmd(ClientData, Tcl_Interp *interp, int objc,
 }
 
 void registerBuiltins(Tcl_Interp *interp) {
+    // subst command: variable and command substitution on a string
+    Tcl_CreateObjCommand(
+        interp, "subst",
+        [](ClientData, Tcl_Interp *interp, int objc,
+           Tcl_Obj *const objv[]) -> int {
+            if (objc < 2) {
+                getImpl(interp)->result = "wrong # args";
+                return TCL_ERROR;
+            }
+            // Skip optional -nobackslashes/-nocommands/-novariables flags
+            int strIdx = objc - 1;
+            int subCode = TCL_OK;
+            std::string result = substitute(interp, Tcl_GetString(objv[strIdx]), &subCode);
+            if (subCode != TCL_OK) return subCode;
+            result = backslashSubst(result);
+            Tcl_SetObjResult(interp, Tcl_NewStringObj(result.c_str(), result.size()));
+            return TCL_OK;
+        },
+        nullptr, nullptr);
     Tcl_CreateObjCommand(interp, "set", setCmd, nullptr, nullptr);
     Tcl_CreateObjCommand(interp, "unset", unsetCmd, nullptr, nullptr);
     Tcl_CreateObjCommand(interp, "puts", putsCmd, nullptr, nullptr);

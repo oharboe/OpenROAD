@@ -311,6 +311,18 @@ static int stringCmd(ClientData, Tcl_Interp *interp, int objc,
         } else if (strcmp(type, "space") == 0) {
             result = (*val != '\0') ? 1 : 0;
             for (const char *p = val; *p; p++) { if (!isspace(*p)) { result = 0; break; } }
+        } else if (strcmp(type, "list") == 0) {
+            // Check if balanced braces/quotes
+            int braces = 0; bool in_q = false;
+            for (const char *p = val; *p; p++) {
+                if (*p == '\\' && *(p+1)) { p++; continue; }
+                if (*p == '"' && braces == 0) in_q = !in_q;
+                if (!in_q) { if (*p == '{') braces++; else if (*p == '}') braces--; }
+            }
+            result = (braces == 0 && !in_q) ? 1 : 0;
+        } else if (strcmp(type, "alnum") == 0) {
+            result = (*val != '\0') ? 1 : 0;
+            for (const char *p = val; *p; p++) { if (!isalnum(*p)) { result = 0; break; } }
         }
         Tcl_SetObjResult(interp, Tcl_NewIntObj(result));
         return TCL_OK;

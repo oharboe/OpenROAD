@@ -490,6 +490,19 @@ void registerBuiltins(Tcl_Interp *interp) {
     Tcl_CreateObjCommand(interp, "proc", procCmd, nullptr, nullptr);
     Tcl_CreateObjCommand(interp, "return", returnCmd, nullptr, nullptr);
     Tcl_CreateObjCommand(interp, "error", errorCmd, nullptr, nullptr);
+    // eval command: concatenate args and evaluate
+    Tcl_CreateObjCommand(
+        interp, "eval",
+        [](ClientData, Tcl_Interp *interp, int objc,
+           Tcl_Obj *const objv[]) -> int {
+            std::string script;
+            for (int i = 1; i < objc; i++) {
+                if (i > 1) script += ' ';
+                script += Tcl_GetString(objv[i]);
+            }
+            return Tcl_Eval(interp, script.c_str());
+        },
+        nullptr, nullptr);
     Tcl_CreateObjCommand(interp, "global", globalCmd, nullptr, nullptr);
     registerControlCommands(interp);
     registerExprCommand(interp);

@@ -121,9 +121,10 @@ void evalTclInit(Tcl_Interp* interp, const char* inits[])
   Tcl_Obj* obj = Tcl_NewStringObj(unencoded.c_str(), unencoded.size());
   Tcl_IncrRefCount(obj);
   if (Tcl_EvalObjEx(interp, obj, 0) != TCL_OK) {
-    Tcl_Eval(interp, "$errorInfo");
     const char* tcl_err = Tcl_GetStringResult(interp);
     fprintf(stderr, "Error: TCL init script: %s.\n", tcl_err);
+    // Print first 200 chars of script for debugging
+    fprintf(stderr, "Script starts with: %.200s\n", unencoded.c_str());
     exit(1);
   }
   Tcl_DecrRefCount(obj);

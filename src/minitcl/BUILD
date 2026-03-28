@@ -12,6 +12,6 @@ cc_library(
     name = "minitcl",
     srcs = glob(["src/*.cc"]),
     hdrs = glob(["src/*.h", "include/*.h"]),
-    defines = ["ENABLE_READLINE"],
+    # No ENABLE_READLINE: minitcl provides its own interactive loop in Tcl_Main
     includes = ["include"],
 )

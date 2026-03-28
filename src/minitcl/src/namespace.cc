@@ -40,10 +40,11 @@ static int namespaceCmd(ClientData, Tcl_Interp *interp, int objc,
     const char *sub = Tcl_GetString(objv[1]);
 
     if (strcmp(sub, "eval") == 0) {
-        if (objc < 4) {
-            impl->result = "wrong # args: should be \"namespace eval name arg ?arg ...?\"";
+        if (objc < 3) {
+            impl->result = "wrong # args: should be \"namespace eval name ?arg ...?\"";
             return TCL_ERROR;
         }
+        if (objc == 3) return TCL_OK;  // no body = no-op
         std::string ns = Tcl_GetString(objv[2]);
         // Qualify the namespace
         if (ns.size() < 2 || ns[0] != ':' || ns[1] != ':') {

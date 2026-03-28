@@ -351,6 +351,24 @@ TEST(EvalTest, CommentIgnored) {
 // Result is from last command
 // ============================================================
 
+// ============================================================
+// eval command (concatenate and evaluate)
+// ============================================================
+
+TEST(EvalTest, EvalCommand) {
+    Tcl_Interp* interp = Tcl_CreateInterp();
+    ASSERT_EQ(Tcl_Eval(interp, "eval set x 42"), TCL_OK);
+    EXPECT_STREQ(Tcl_GetStringResult(interp), "42");
+    Tcl_DeleteInterp(interp);
+}
+
+TEST(EvalTest, EvalMultipleArgs) {
+    Tcl_Interp* interp = Tcl_CreateInterp();
+    ASSERT_EQ(Tcl_Eval(interp, "eval {set x} {42}"), TCL_OK);
+    EXPECT_STREQ(Tcl_GetStringResult(interp), "42");
+    Tcl_DeleteInterp(interp);
+}
+
 TEST(EvalTest, ResultFromLastCommand) {
     Tcl_Interp* interp = Tcl_CreateInterp();
     ASSERT_EQ(Tcl_Eval(interp, "set x 1\nset y 2\nset z 3"), TCL_OK);

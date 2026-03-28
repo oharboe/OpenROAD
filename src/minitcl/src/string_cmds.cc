@@ -138,8 +138,21 @@ static int stringCmd(ClientData, Tcl_Interp *interp, int objc,
     }
 
     if (strcmp(sub, "equal") == 0 || strcmp(sub, "compare") == 0) {
-        if (objc != 4) { getImpl(interp)->result = "wrong # args"; return TCL_ERROR; }
-        int cmp = strcmp(Tcl_GetString(objv[2]), Tcl_GetString(objv[3]));
+        if (objc < 4) { getImpl(interp)->result = "wrong # args"; return TCL_ERROR; }
+        bool nocase = false;
+        int maxLen = -1;
+        int idx = 2;
+        while (idx < objc - 2) {
+            const char *opt = Tcl_GetString(objv[idx]);
+            if (strcmp(opt, "-nocase") == 0) { nocase = true; idx++; }
+            else if (strcmp(opt, "-length") == 0 && idx + 1 < objc - 2) { maxLen = atoi(Tcl_GetString(objv[idx + 1])); idx += 2; }
+            else break;
+        }
+        if (objc - idx != 2) { getImpl(interp)->result = "wrong # args"; return TCL_ERROR; }
+        std::string s1 = Tcl_GetString(objv[idx]);
+        std::string s2 = Tcl_GetString(objv[idx + 1]);
+        if (maxLen >= 0) { s1 = s1.substr(0, maxLen); s2 = s2.substr(0, maxLen); }
+        int cmp = nocase ? strcasecmp(s1.c_str(), s2.c_str()) : strcmp(s1.c_str(), s2.c_str());
         if (strcmp(sub, "equal") == 0)
             Tcl_SetObjResult(interp, Tcl_NewIntObj(cmp == 0 ? 1 : 0));
         else

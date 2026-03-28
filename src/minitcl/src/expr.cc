@@ -157,6 +157,27 @@ class ExprParser {
                 p_ += 2;
                 ExprVal r = parseRelational();
                 v = ExprVal::makeInt(v.toString() != r.toString());
+            } else if (*p_ == 'i' && *(p_ + 1) == 'n' && !isalnum(*(p_ + 2))) {
+                p_ += 2;
+                ExprVal r = parseRelational();
+                // Check if v is in the list r
+                std::string needle = v.toString();
+                auto list = minitcl::parseScript(r.toString().c_str());
+                bool found = false;
+                for (auto &cmd : list)
+                    for (auto &w : cmd.words)
+                        if (w.text == needle) found = true;
+                v = ExprVal::makeInt(found ? 1 : 0);
+            } else if (*p_ == 'n' && *(p_ + 1) == 'i' && !isalnum(*(p_ + 2))) {
+                p_ += 2;
+                ExprVal r = parseRelational();
+                std::string needle = v.toString();
+                auto list = minitcl::parseScript(r.toString().c_str());
+                bool found = false;
+                for (auto &cmd : list)
+                    for (auto &w : cmd.words)
+                        if (w.text == needle) found = true;
+                v = ExprVal::makeInt(found ? 0 : 1);
             } else {
                 break;
             }

@@ -111,12 +111,25 @@ Tcl_Channel Tcl_StackChannel(Tcl_Interp *, const Tcl_ChannelType *typePtr,
 
 int Tcl_UnstackChannel(Tcl_Interp *, Tcl_Channel chan) {
     auto *ch = static_cast<minitcl::ChannelImpl *>(chan);
-    // Remove from tracking
+    // Only delete dynamically-allocated stacked channels, not static base channels
     auto &v = minitcl::stackedChannels;
     for (auto it = v.begin(); it != v.end(); ++it) {
-        if (*it == ch) { v.erase(it); break; }
+        if (*it == ch) {
+            v.erase(it);
+            delete ch;
+            return TCL_OK;
+        }
     }
-    delete ch;
+    // If chan is a base channel (stdout/stderr/stdin), find and remove
+    // the most recent stacked channel on top of it instead
+    for (auto it = v.rbegin(); it != v.rend(); ++it) {
+        if ((*it)->parent == ch) {
+            auto *stacked = *it;
+            v.erase(std::next(it).base());
+            delete stacked;
+            return TCL_OK;
+        }
+    }
     return TCL_OK;
 }
 

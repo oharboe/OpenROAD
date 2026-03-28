@@ -48,12 +48,13 @@ load("@rules_shell//shell:sh_test.bzl", "sh_test")
 # to verify minitcl works end-to-end with SWIG commands, STA init, etc.
 
 _OPENROAD_TCL_TESTS = {
-    "tcl_smoke": [],
-    "tcl_sta_commands": [],
-    "tcl_read_design": ["//test:regression_resources"],
+    "tcl_cts": ["//test:regression_resources"],
     "tcl_floorplan": ["//test:regression_resources"],
     "tcl_placement": ["//test:regression_resources"],
+    "tcl_read_design": ["//test:regression_resources"],
     "tcl_route": ["//test:regression_resources"],
+    "tcl_smoke": [],
+    "tcl_sta_commands": [],
     "tcl_write_output": ["//test:regression_resources"],
 }
 

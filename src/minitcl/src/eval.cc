@@ -3,6 +3,7 @@
 
 #include "eval.h"
 #include "control.h"
+#include "expr.h"
 #include "interp.h"
 #include "parser.h"
 
@@ -461,6 +462,7 @@ void registerBuiltins(Tcl_Interp *interp) {
     Tcl_CreateObjCommand(interp, "error", errorCmd, nullptr, nullptr);
     Tcl_CreateObjCommand(interp, "global", globalCmd, nullptr, nullptr);
     registerControlCommands(interp);
+    registerExprCommand(interp);
 }
 
 }  // namespace minitcl

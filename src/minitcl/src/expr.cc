@@ -241,7 +241,13 @@ class ExprParser {
         if (*p_ == '*' && *(p_ + 1) == '*') {
             p_ += 2;
             ExprVal r = parseUnary();
-            v = ExprVal::makeDouble(pow(v.asDouble(), r.asDouble()));
+            if (v.type == ExprVal::INT && r.type == ExprVal::INT && r.ival >= 0) {
+                long long result = 1;
+                for (long long i = 0; i < r.ival; i++) result *= v.ival;
+                v = ExprVal::makeInt(result);
+            } else {
+                v = ExprVal::makeDouble(pow(v.asDouble(), r.asDouble()));
+            }
         }
         return v;
     }

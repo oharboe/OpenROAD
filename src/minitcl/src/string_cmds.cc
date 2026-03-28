@@ -310,6 +310,24 @@ static int stringCmd(ClientData, Tcl_Interp *interp, int objc,
         return TCL_OK;
     }
 
+    if (strcmp(sub, "reverse") == 0) {
+        if (objc != 3) { getImpl(interp)->result = "wrong # args"; return TCL_ERROR; }
+        std::string s = Tcl_GetString(objv[2]);
+        std::reverse(s.begin(), s.end());
+        Tcl_SetObjResult(interp, Tcl_NewStringObj(s.c_str(), s.size()));
+        return TCL_OK;
+    }
+
+    if (strcmp(sub, "repeat") == 0) {
+        if (objc != 4) { getImpl(interp)->result = "wrong # args"; return TCL_ERROR; }
+        const char *s = Tcl_GetString(objv[2]);
+        int count = atoi(Tcl_GetString(objv[3]));
+        std::string result;
+        for (int i = 0; i < count; i++) result += s;
+        Tcl_SetObjResult(interp, Tcl_NewStringObj(result.c_str(), result.size()));
+        return TCL_OK;
+    }
+
     getImpl(interp)->result = std::string("unknown or ambiguous subcommand \"") + sub + "\"";
     return TCL_ERROR;
 }
@@ -603,6 +621,91 @@ void registerStringCommands(Tcl_Interp *interp) {
     Tcl_CreateObjCommand(interp, "join", joinCmd, nullptr, nullptr);
 }
 
+static int lreplaceCmd(ClientData, Tcl_Interp *interp, int objc,
+                        Tcl_Obj *const objv[]) {
+    if (objc < 4) { getImpl(interp)->result = "wrong # args"; return TCL_ERROR; }
+    auto elems = parseList(Tcl_GetString(objv[1]));
+    int len = elems.size();
+    int first = atoi(Tcl_GetString(objv[2]));
+    const char *lastStr = Tcl_GetString(objv[3]);
+    int last = strcmp(lastStr, "end") == 0 ? len - 1 : atoi(lastStr);
+    if (first < 0) first = 0;
+    if (last >= len) last = len - 1;
+
+    std::vector<std::string> result;
+    for (int i = 0; i < first && i < len; i++) result.push_back(elems[i]);
+    for (int i = 4; i < objc; i++) result.push_back(Tcl_GetString(objv[i]));
+    for (int i = last + 1; i < len; i++) result.push_back(elems[i]);
+    Tcl_SetObjResult(interp, Tcl_NewStringObj(buildList(result).c_str(), -1));
+    return TCL_OK;
+}
+
+static int scanCmd(ClientData, Tcl_Interp *interp, int objc,
+                    Tcl_Obj *const objv[]) {
+    if (objc < 3) { getImpl(interp)->result = "wrong # args"; return TCL_ERROR; }
+    const char *str = Tcl_GetString(objv[1]);
+    const char *fmt = Tcl_GetString(objv[2]);
+
+    // Simple scan: support %d, %f, %s, %c, %x
+    std::vector<std::string> results;
+    const char *sp = str;
+    const char *fp = fmt;
+    while (*fp && *sp) {
+        if (*fp == '%') {
+            fp++;
+            char spec = *fp++;
+            char buf[256];
+            switch (spec) {
+                case 'd': {
+                    char *end;
+                    long v = strtol(sp, &end, 10);
+                    if (end > sp) { snprintf(buf, sizeof(buf), "%ld", v); results.push_back(buf); sp = end; }
+                    break;
+                }
+                case 'f': {
+                    char *end;
+                    double v = strtod(sp, &end);
+                    if (end > sp) { snprintf(buf, sizeof(buf), "%g", v); results.push_back(buf); sp = end; }
+                    break;
+                }
+                case 'x': case 'X': {
+                    char *end;
+                    long v = strtol(sp, &end, 16);
+                    if (end > sp) { snprintf(buf, sizeof(buf), "%ld", v); results.push_back(buf); sp = end; }
+                    break;
+                }
+                case 'c': {
+                    snprintf(buf, sizeof(buf), "%d", (int)*sp);
+                    results.push_back(buf);
+                    sp++;
+                    break;
+                }
+                case 's': {
+                    std::string s;
+                    while (*sp && *sp != ' ' && *sp != '\t' && *sp != '\n') s += *sp++;
+                    results.push_back(s);
+                    break;
+                }
+                default: break;
+            }
+        } else {
+            if (*fp == *sp) { fp++; sp++; }
+            else break;
+        }
+    }
+
+    // If variable names provided, store results in them
+    if (objc > 3) {
+        for (int i = 3; i < objc && (size_t)(i - 3) < results.size(); i++) {
+            Tcl_SetVar(interp, Tcl_GetString(objv[i]), results[i - 3].c_str(), 0);
+        }
+        Tcl_SetObjResult(interp, Tcl_NewIntObj(results.size()));
+    } else if (!results.empty()) {
+        Tcl_SetObjResult(interp, Tcl_NewStringObj(results[0].c_str(), -1));
+    }
+    return TCL_OK;
+}
+
 void registerListCommands(Tcl_Interp *interp) {
     Tcl_CreateObjCommand(interp, "list", listCmd, nullptr, nullptr);
     Tcl_CreateObjCommand(interp, "llength", llengthCmd, nullptr, nullptr);
@@ -613,6 +716,8 @@ void registerListCommands(Tcl_Interp *interp) {
     Tcl_CreateObjCommand(interp, "lsearch", lsearchCmd, nullptr, nullptr);
     Tcl_CreateObjCommand(interp, "concat", concatCmd, nullptr, nullptr);
     Tcl_CreateObjCommand(interp, "lassign", lassignCmd, nullptr, nullptr);
+    Tcl_CreateObjCommand(interp, "lreplace", lreplaceCmd, nullptr, nullptr);
+    Tcl_CreateObjCommand(interp, "scan", scanCmd, nullptr, nullptr);
 }
 
 }  // namespace minitcl

@@ -6,6 +6,7 @@
 #include "expr.h"
 #include "interp.h"
 #include "parser.h"
+#include "string_cmds.h"
 
 #include <cstdio>
 #include <cstring>
@@ -463,6 +464,8 @@ void registerBuiltins(Tcl_Interp *interp) {
     Tcl_CreateObjCommand(interp, "global", globalCmd, nullptr, nullptr);
     registerControlCommands(interp);
     registerExprCommand(interp);
+    registerStringCommands(interp);
+    registerListCommands(interp);
 }
 
 }  // namespace minitcl

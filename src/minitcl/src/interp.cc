@@ -118,10 +118,18 @@ int Tcl_Eval(Tcl_Interp *interp, const char *script) {
 }
 
 int Tcl_EvalFile(Tcl_Interp *interp, const char *fileName) {
-    (void)fileName;
-    auto *impl = minitcl::getImpl(interp);
-    impl->result = "not implemented";
-    return TCL_ERROR;
+    FILE *fp = fopen(fileName, "r");
+    if (!fp) {
+        auto *impl = minitcl::getImpl(interp);
+        impl->result = std::string("couldn't read file \"") + fileName +
+                        "\": no such file or directory";
+        return TCL_ERROR;
+    }
+    std::string content;
+    int ch;
+    while ((ch = fgetc(fp)) != EOF) content += static_cast<char>(ch);
+    fclose(fp);
+    return Tcl_Eval(interp, content.c_str());
 }
 
 int Tcl_EvalObjEx(Tcl_Interp *interp, Tcl_Obj *objPtr, int flags) {

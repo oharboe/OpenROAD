@@ -3,6 +3,7 @@
 
 #include "eval.h"
 #include "control.h"
+#include "dict_array.h"
 #include "expr.h"
 #include "interp.h"
 #include "parser.h"
@@ -470,6 +471,10 @@ void registerBuiltins(Tcl_Interp *interp) {
     registerListCommands(interp);
     registerRegexpCommands(interp);
     registerNamespaceCommands(interp);
+    registerDictCommands(interp);
+    registerArrayCommands(interp);
+    registerInfoCommand(interp);
+    registerGlobCommand(interp);
 }
 
 }  // namespace minitcl

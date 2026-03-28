@@ -166,9 +166,7 @@ cc_binary(
         "src/Main.cc",
     ],
     copts = OPENROAD_COPTS,
-    data = [
-        "@tclreadline//:tclreadline_scripts",
-    ],
+    data = [],
     features = ["-use_header_modules"],
     malloc = select({
         "@platforms//os:linux": "@tcmalloc//tcmalloc",
@@ -188,11 +186,7 @@ cc_binary(
         "@boost.stacktrace",
         "@rules_cc//cc/runfiles",
         "//src/minitcl",
-        # tclreadline: provides ENABLE_READLINE define + links libtclreadline.
-        # On systems without tclreadline these are empty stub targets (no-op).
-        # See: https://github.com/The-OpenROAD-Project/OpenROAD/issues/7115
-        "@tclreadline",
-        "@tclreadline//:tclreadline_defs",
+        # minitcl provides mock tclreadline.h stubs
     ],
 )
 

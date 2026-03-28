@@ -11,6 +11,7 @@ package(
 cc_library(
     name = "minitcl",
     srcs = glob(["src/*.cc"]),
-    hdrs = glob(["src/*.h"]) + ["include/tcl.h"],
+    hdrs = glob(["src/*.h", "include/*.h"]),
+    defines = ["ENABLE_READLINE"],
     includes = ["include"],
 )

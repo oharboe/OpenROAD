@@ -381,7 +381,7 @@ char *Tcl_GetString(Tcl_Obj *objPtr) {
     return objPtr->bytes;
 }
 
-const char *Tcl_GetStringFromObj(Tcl_Obj *objPtr, int *lengthPtr) {
+char *Tcl_GetStringFromObj(Tcl_Obj *objPtr, int *lengthPtr) {
     if (!objPtr) {
         if (lengthPtr) *lengthPtr = 0;
         return "";

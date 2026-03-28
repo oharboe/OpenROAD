@@ -52,12 +52,21 @@ extern "C" {
 #define TCL_APPEND_VALUE     0x08
 #define TCL_LIST_ELEMENT     0x10
 
+// Trace flags
+#define TCL_TRACE_READS      0x10
+#define TCL_TRACE_WRITES     0x20
+#define TCL_TRACE_UNSETS     0x40
+
 // Eval flags
 #define TCL_EVAL_GLOBAL      0x01
 #define TCL_EVAL_DIRECT      0x02
 
 // Tcl_Size - integer type for sizes
 typedef int Tcl_Size;
+
+// Tcl_WideInt - wide integer type
+typedef long long Tcl_WideInt;
+typedef unsigned long long Tcl_WideUInt;
 
 // ClientData - opaque pointer for user data
 typedef void* ClientData;
@@ -188,12 +197,14 @@ Tcl_Obj*    Tcl_NewWideIntObj(long long wideValue);
 Tcl_Obj*    Tcl_NewListObj(int objc, Tcl_Obj *const objv[]);
 
 char*       Tcl_GetString(Tcl_Obj *objPtr);
-const char* Tcl_GetStringFromObj(Tcl_Obj *objPtr, int *lengthPtr);
+char*       Tcl_GetStringFromObj(Tcl_Obj *objPtr, int *lengthPtr);
 int         Tcl_GetInt(Tcl_Interp *interp, const char *src, int *intPtr);
 int         Tcl_GetDouble(Tcl_Interp *interp, const char *src,
                            double *doublePtr);
 int         Tcl_GetDoubleFromObj(Tcl_Interp *interp, Tcl_Obj *objPtr,
                                   double *doublePtr);
+int         Tcl_GetIntFromObj(Tcl_Interp *interp, Tcl_Obj *objPtr,
+                              int *intPtr);
 int         Tcl_GetWideIntFromObj(Tcl_Interp *interp, Tcl_Obj *objPtr,
                                    long long *widePtr);
 int         Tcl_GetBooleanFromObj(Tcl_Interp *interp, Tcl_Obj *objPtr,
@@ -245,6 +256,10 @@ const char* Tcl_SetVar(Tcl_Interp *interp, const char *varName,
 const char* Tcl_GetVar(Tcl_Interp *interp, const char *varName, int flags);
 const char* Tcl_GetVar2(Tcl_Interp *interp, const char *part1,
                           const char *part2, int flags);
+const char* Tcl_SetVar2(Tcl_Interp *interp, const char *part1,
+                        const char *part2, const char *newValue, int flags);
+Tcl_Obj*    Tcl_ObjGetVar2(Tcl_Interp *interp, Tcl_Obj *part1Ptr,
+                           Tcl_Obj *part2Ptr, int flags);
 Tcl_Obj*    Tcl_SetVar2Ex(Tcl_Interp *interp, const char *part1,
                            const char *part2, Tcl_Obj *newValuePtr,
                            int flags);
@@ -289,6 +304,91 @@ int         Tcl_Flush(Tcl_Channel chan);
 const Tcl_ChannelType* Tcl_GetChannelType(Tcl_Channel chan);
 ClientData  Tcl_GetChannelInstanceData(Tcl_Channel chan);
 Tcl_DriverOutputProc* Tcl_ChannelOutputProc(const Tcl_ChannelType *chanTypePtr);
+
+// Hash table types (used by SWIG runtime)
+#define TCL_ONE_WORD_KEYS 0
+#define TCL_STRING_KEYS   1
+
+typedef struct Tcl_HashEntry {
+    struct Tcl_HashEntry *nextPtr;
+    void *clientData;
+    const char *key;
+} Tcl_HashEntry;
+
+#define TCL_SMALL_HASH_TABLE 4
+
+typedef struct Tcl_HashTable {
+    Tcl_HashEntry **buckets;
+    Tcl_HashEntry *staticBuckets[TCL_SMALL_HASH_TABLE];
+    int numBuckets;
+    int numEntries;
+    int rebuildSize;
+    int downShift;
+    int mask;
+    int keyType;
+    void *findProc;
+    void *createProc;
+    struct Tcl_HashTable *nextPtr;
+} Tcl_HashTable;
+
+typedef struct Tcl_HashSearch {
+    int dummy;
+} Tcl_HashSearch;
+
+// CmdInfo (used by SWIG runtime)
+typedef struct Tcl_CmdInfo {
+    int isNativeObjectProc;
+    Tcl_ObjCmdProc *objProc;
+    ClientData objClientData;
+    Tcl_CmdProc *proc;
+    ClientData clientData;
+    Tcl_CmdDeleteProc *deleteProc;
+    ClientData deleteData;
+    void *namespacePtr;
+} Tcl_CmdInfo;
+
+// ============================================================
+// Additional functions used by SWIG runtime
+// ============================================================
+int  Tcl_GetCommandInfo(Tcl_Interp *interp, const char *cmdName,
+                         Tcl_CmdInfo *infoPtr);
+int  Tcl_SetCommandInfo(Tcl_Interp *interp, const char *cmdName,
+                         const Tcl_CmdInfo *infoPtr);
+void Tcl_DeleteCommandFromToken(Tcl_Interp *interp, Tcl_Command command);
+Tcl_Obj* Tcl_DuplicateObj(Tcl_Obj *objPtr);
+Tcl_Obj* Tcl_ObjSetVar2(Tcl_Interp *interp, Tcl_Obj *part1Ptr,
+                          Tcl_Obj *part2Ptr, Tcl_Obj *newValuePtr,
+                          int flags);
+void Tcl_AppendElement(Tcl_Interp *interp, const char *element);
+int  Tcl_VarEval(Tcl_Interp *interp, ...);
+void Tcl_AddErrorInfo(Tcl_Interp *interp, const char *message);
+void Tcl_SetErrorCode(Tcl_Interp *interp, ...);
+int  Tcl_PkgProvide(Tcl_Interp *interp, const char *name, const char *version);
+Tcl_Obj* Tcl_NewLongObj(long longValue);
+int  Tcl_GetLongFromObj(Tcl_Interp *interp, Tcl_Obj *objPtr, long *longPtr);
+
+// Trace support
+typedef char* (Tcl_VarTraceProc)(ClientData clientData, Tcl_Interp *interp,
+                                  const char *name1, const char *name2,
+                                  int flags);
+int  Tcl_TraceVar(Tcl_Interp *interp, const char *varName, int flags,
+                   Tcl_VarTraceProc *proc, ClientData clientData);
+void Tcl_UntraceVar(Tcl_Interp *interp, const char *varName, int flags,
+                     Tcl_VarTraceProc *proc, ClientData clientData);
+
+// Hash table functions (stubs for SWIG)
+void Tcl_InitHashTable(Tcl_HashTable *tablePtr, int keyType);
+void Tcl_DeleteHashTable(Tcl_HashTable *tablePtr);
+Tcl_HashEntry* Tcl_CreateHashEntry(Tcl_HashTable *tablePtr,
+                                    const char *key, int *newPtr);
+Tcl_HashEntry* Tcl_FindHashEntry(Tcl_HashTable *tablePtr, const char *key);
+void Tcl_DeleteHashEntry(Tcl_HashEntry *entryPtr);
+void Tcl_SetHashValue(Tcl_HashEntry *entryPtr, ClientData value);
+ClientData Tcl_GetHashValue(Tcl_HashEntry *entryPtr);
+const char* Tcl_GetHashKey(Tcl_HashTable *tablePtr, Tcl_HashEntry *entryPtr);
+Tcl_HashEntry* Tcl_FirstHashEntry(Tcl_HashTable *tablePtr,
+                                   Tcl_HashSearch *searchPtr);
+Tcl_HashEntry* Tcl_NextHashEntry(Tcl_HashSearch *searchPtr);
 
 // ============================================================
 // Memory

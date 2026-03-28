@@ -160,18 +160,27 @@ int Tcl_Eval(Tcl_Interp *interp, const char *script) {
         words.reserve(cmd.words.size());
 
         for (const auto &word : cmd.words) {
+            std::string value;
             if (word.braced) {
-                // Braced words: no substitution
-                words.push_back(word.text);
+                value = word.text;
             } else {
-                // Perform variable and command substitution
                 int subCode = TCL_OK;
                 std::string substituted =
                     minitcl::substitute(interp, word.text, &subCode);
-                if (subCode != TCL_OK) return subCode;
+                if (subCode != TCL_OK) { --evalDepth; return subCode; }
+                value = minitcl::backslashSubst(substituted);
+            }
 
-                // Also do backslash substitution on non-braced words
-                words.push_back(minitcl::backslashSubst(substituted));
+            if (word.expand) {
+                // {*} expansion: split value as a Tcl list into multiple args
+                auto listCmds = minitcl::parseScript(value.c_str());
+                for (const auto &lc : listCmds) {
+                    for (const auto &lw : lc.words) {
+                        words.push_back(lw.text);
+                    }
+                }
+            } else {
+                words.push_back(std::move(value));
             }
         }
 
@@ -950,4 +959,51 @@ void Tcl_Free(char *ptr) {
 
 char *Tcl_Alloc(unsigned int size) {
     return static_cast<char *>(malloc(size));
+}
+
+// Glob-style pattern matching (supports *, ?, [chars], \escape)
+int Tcl_StringMatch(const char *str, const char *pattern) {
+    while (*pattern) {
+        if (*pattern == '*') {
+            pattern++;
+            if (!*pattern) return 1;  // trailing * matches everything
+            while (*str) {
+                if (Tcl_StringMatch(str, pattern)) return 1;
+                str++;
+            }
+            return 0;
+        } else if (*pattern == '?') {
+            if (!*str) return 0;
+            str++;
+            pattern++;
+        } else if (*pattern == '[') {
+            pattern++;
+            bool invert = (*pattern == '^');
+            if (invert) pattern++;
+            bool matched = false;
+            while (*pattern && *pattern != ']') {
+                if (*(pattern + 1) == '-' && *(pattern + 2) && *(pattern + 2) != ']') {
+                    if (*str >= *pattern && *str <= *(pattern + 2)) matched = true;
+                    pattern += 3;
+                } else {
+                    if (*str == *pattern) matched = true;
+                    pattern++;
+                }
+            }
+            if (*pattern == ']') pattern++;
+            if (invert) matched = !matched;
+            if (!matched) return 0;
+            str++;
+        } else if (*pattern == '\\') {
+            pattern++;
+            if (*pattern != *str) return 0;
+            if (*pattern) pattern++;
+            if (*str) str++;
+        } else {
+            if (*pattern != *str) return 0;
+            pattern++;
+            str++;
+        }
+    }
+    return *str == '\0';
 }

@@ -390,6 +390,9 @@ static int lsortCmd(ClientData, Tcl_Interp *interp, int objc,
     bool dictionary = false;
     bool integer = false;
     bool real = false;
+    bool unique = false;
+    bool nocase = false;
+    int sortIndex = -1;
     int listIdx = objc - 1;
     for (int i = 1; i < objc - 1; i++) {
         const char *opt = Tcl_GetString(objv[i]);
@@ -398,24 +401,44 @@ static int lsortCmd(ClientData, Tcl_Interp *interp, int objc,
         else if (strcmp(opt, "-dictionary") == 0) dictionary = true;
         else if (strcmp(opt, "-integer") == 0) integer = true;
         else if (strcmp(opt, "-real") == 0) real = true;
+        else if (strcmp(opt, "-unique") == 0) unique = true;
+        else if (strcmp(opt, "-nocase") == 0) nocase = true;
+        else if (strcmp(opt, "-index") == 0 && i + 1 < objc - 1) {
+            sortIndex = atoi(Tcl_GetString(objv[++i]));
+        }
     }
     auto elems = parseList(Tcl_GetString(objv[listIdx]));
+
+    auto getKey = [sortIndex](const std::string &elem) -> std::string {
+        if (sortIndex >= 0) {
+            auto sub = parseList(elem.c_str());
+            if (sortIndex < (int)sub.size()) return sub[sortIndex];
+            return "";
+        }
+        return elem;
+    };
+
     if (integer) {
-        std::sort(elems.begin(), elems.end(), [](const std::string &a, const std::string &b) {
-            return atoi(a.c_str()) < atoi(b.c_str());
+        std::sort(elems.begin(), elems.end(), [&](const std::string &a, const std::string &b) {
+            return atoi(getKey(a).c_str()) < atoi(getKey(b).c_str());
         });
     } else if (real) {
-        std::sort(elems.begin(), elems.end(), [](const std::string &a, const std::string &b) {
-            return atof(a.c_str()) < atof(b.c_str());
+        std::sort(elems.begin(), elems.end(), [&](const std::string &a, const std::string &b) {
+            return atof(getKey(a).c_str()) < atof(getKey(b).c_str());
         });
-    } else if (dictionary) {
-        std::sort(elems.begin(), elems.end(), [](const std::string &a, const std::string &b) {
-            return strcasecmp(a.c_str(), b.c_str()) < 0;
+    } else if (dictionary || nocase) {
+        std::sort(elems.begin(), elems.end(), [&](const std::string &a, const std::string &b) {
+            return strcasecmp(getKey(a).c_str(), getKey(b).c_str()) < 0;
         });
     } else {
-        std::sort(elems.begin(), elems.end());
+        std::sort(elems.begin(), elems.end(), [&](const std::string &a, const std::string &b) {
+            return getKey(a) < getKey(b);
+        });
     }
     if (decreasing) std::reverse(elems.begin(), elems.end());
+    if (unique) {
+        elems.erase(std::unique(elems.begin(), elems.end()), elems.end());
+    }
     Tcl_SetObjResult(interp, Tcl_NewStringObj(buildList(elems).c_str(), -1));
     return TCL_OK;
 }
@@ -426,11 +449,17 @@ static int lsearchCmd(ClientData, Tcl_Interp *interp, int objc,
     auto elems = parseList(Tcl_GetString(objv[objc - 2]));
     const char *pattern = Tcl_GetString(objv[objc - 1]);
     bool exact = false;
+    bool useGlob = false;
     for (int i = 1; i < objc - 2; i++) {
-        if (strcmp(Tcl_GetString(objv[i]), "-exact") == 0) exact = true;
+        const char *opt = Tcl_GetString(objv[i]);
+        if (strcmp(opt, "-exact") == 0) exact = true;
+        else if (strcmp(opt, "-glob") == 0) useGlob = true;
     }
     for (size_t i = 0; i < elems.size(); i++) {
-        if (exact ? elems[i] == pattern : elems[i] == pattern) {
+        bool match = exact ? (elems[i] == pattern)
+                           : useGlob ? Tcl_StringMatch(elems[i].c_str(), pattern)
+                                     : (elems[i] == pattern);
+        if (match) {
             Tcl_SetObjResult(interp, Tcl_NewIntObj(i));
             return TCL_OK;
         }

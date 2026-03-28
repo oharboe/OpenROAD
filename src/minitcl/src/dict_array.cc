@@ -278,7 +278,7 @@ static int infoCmd(ClientData, Tcl_Interp *interp, int objc,
         std::string pattern = objc >= 3 ? Tcl_GetString(objv[2]) : "*";
         std::string result;
         for (auto &[name, cmd] : impl->commands) {
-            if (pattern == "*" || name == pattern) {
+            if (Tcl_StringMatch(name.c_str(), pattern.c_str())) {
                 if (!result.empty()) result += ' ';
                 result += name;
             }

@@ -405,6 +405,9 @@ void  Tcl_DStringFree(Tcl_DString *dsPtr);
 char* Tcl_DStringValue(Tcl_DString *dsPtr);
 int   Tcl_DStringLength(Tcl_DString *dsPtr);
 
+// Glob-style string matching
+int   Tcl_StringMatch(const char *str, const char *pattern);
+
 #ifdef __cplusplus
 }
 #endif

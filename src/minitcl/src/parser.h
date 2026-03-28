@@ -14,7 +14,8 @@ namespace minitcl {
 // Each word tracks whether it was braced (no substitution) or not.
 struct Word {
     std::string text;
-    bool braced = false;  // {}-quoted: no substitution needed
+    bool braced = false;   // {}-quoted: no substitution needed
+    bool expand = false;   // {*} prefix: expand result as list into args
 };
 
 struct ParsedCommand {

@@ -191,7 +191,35 @@ std::vector<ParsedCommand> parseScript(const char *script) {
             }
 
             Word word;
-            if (*p == '{') {
+            // Check for {*} expansion prefix
+            if (p[0] == '{' && p[1] == '*' && p[2] == '}') {
+                word.expand = true;
+                p += 3;  // skip {*}
+                // Parse the following word (no whitespace between {*} and word)
+                if (*p == '{') {
+                    std::string text;
+                    if (parseBraced(p, text)) {
+                        word.text = text;
+                        word.braced = true;
+                        cmd.words.push_back(word);
+                    }
+                } else if (*p == '"') {
+                    std::string text;
+                    if (parseQuoted(p, text)) {
+                        word.text = text;
+                        word.braced = false;
+                        cmd.words.push_back(word);
+                    }
+                } else if (*p && *p != ' ' && *p != '\t' && *p != '\n' &&
+                           *p != ';') {
+                    std::string text;
+                    if (parseBareWord(p, text)) {
+                        word.text = text;
+                        word.braced = false;
+                        cmd.words.push_back(word);
+                    }
+                }
+            } else if (*p == '{') {
                 std::string text;
                 if (parseBraced(p, text)) {
                     word.text = text;

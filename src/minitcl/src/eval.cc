@@ -465,15 +465,43 @@ static int procCmd(ClientData, Tcl_Interp *interp, int objc,
 
 static int returnCmd(ClientData, Tcl_Interp *interp, int objc,
                       Tcl_Obj *const objv[]) {
-    if (objc > 2) {
-        auto *impl = getImpl(interp);
-        impl->result = "wrong # args: should be \"return ?result?\"";
-        return TCL_ERROR;
+    int returnCode = TCL_RETURN;
+    int i = 1;
+
+    // Parse optional flags: -code, -errorcode, -errorinfo, -level
+    while (i < objc) {
+        const char *arg = Tcl_GetString(objv[i]);
+        if (strcmp(arg, "-code") == 0 && i + 1 < objc) {
+            i++;
+            const char *codeStr = Tcl_GetString(objv[i]);
+            if (strcmp(codeStr, "ok") == 0) returnCode = TCL_OK;
+            else if (strcmp(codeStr, "error") == 0) returnCode = TCL_ERROR;
+            else if (strcmp(codeStr, "return") == 0) returnCode = TCL_RETURN;
+            else if (strcmp(codeStr, "break") == 0) returnCode = TCL_BREAK;
+            else if (strcmp(codeStr, "continue") == 0) returnCode = TCL_CONTINUE;
+            else {
+                int code = 0;
+                if (Tcl_GetIntFromObj(interp, objv[i], &code) == TCL_OK)
+                    returnCode = code;
+            }
+            i++;
+        } else if (strcmp(arg, "-errorcode") == 0 && i + 1 < objc) {
+            i++;
+            Tcl_SetVar(interp, "errorCode", Tcl_GetString(objv[i]), TCL_GLOBAL_ONLY);
+            i++;
+        } else if (strcmp(arg, "-errorinfo") == 0 && i + 1 < objc) {
+            i++;
+            Tcl_SetVar(interp, "errorInfo", Tcl_GetString(objv[i]), TCL_GLOBAL_ONLY);
+            i++;
+        } else if (strcmp(arg, "-level") == 0 && i + 1 < objc) {
+            i += 2;  // skip -level N (not fully implemented)
+        } else {
+            // This is the return value
+            Tcl_SetObjResult(interp, objv[i]);
+            i++;
+        }
     }
-    if (objc == 2) {
-        Tcl_SetObjResult(interp, objv[1]);
-    }
-    return TCL_RETURN;
+    return returnCode;
 }
 
 static int errorCmd(ClientData, Tcl_Interp *interp, int objc,

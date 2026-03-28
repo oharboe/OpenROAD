@@ -230,7 +230,11 @@ static int arrayCmd(ClientData, Tcl_Interp *interp, int objc,
                 if (!result.empty()) result += ' ';
                 result += key;
                 result += ' ';
-                result += v;
+                // Quote values that contain spaces
+                bool needsQ = v.empty();
+                for (char c : v) if (c == ' ' || c == '\t') { needsQ = true; break; }
+                if (needsQ) { result += '{'; result += v; result += '}'; }
+                else result += v;
             }
         }
         Tcl_SetObjResult(interp, Tcl_NewStringObj(result.c_str(), -1));

@@ -52,6 +52,7 @@ _OPENROAD_TCL_TESTS = {
     "tcl_sta_commands": [],
     "tcl_read_design": ["//test:regression_resources"],
     "tcl_floorplan": ["//test:regression_resources"],
+    "tcl_placement": ["//test:regression_resources"],
 }
 
 [sh_test(

@@ -718,6 +718,45 @@ void registerListCommands(Tcl_Interp *interp) {
     Tcl_CreateObjCommand(interp, "lassign", lassignCmd, nullptr, nullptr);
     Tcl_CreateObjCommand(interp, "lreplace", lreplaceCmd, nullptr, nullptr);
     Tcl_CreateObjCommand(interp, "scan", scanCmd, nullptr, nullptr);
+    Tcl_CreateObjCommand(interp, "lreverse",
+        [](ClientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]) -> int {
+            if (objc != 2) { getImpl(interp)->result = "wrong # args"; return TCL_ERROR; }
+            auto elems = parseList(Tcl_GetString(objv[1]));
+            std::reverse(elems.begin(), elems.end());
+            Tcl_SetObjResult(interp, Tcl_NewStringObj(buildList(elems).c_str(), -1));
+            return TCL_OK;
+        }, nullptr, nullptr);
+    Tcl_CreateObjCommand(interp, "lrepeat",
+        [](ClientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]) -> int {
+            if (objc < 3) { getImpl(interp)->result = "wrong # args"; return TCL_ERROR; }
+            int count = atoi(Tcl_GetString(objv[1]));
+            std::vector<std::string> result;
+            for (int i = 0; i < count; i++)
+                for (int j = 2; j < objc; j++) result.push_back(Tcl_GetString(objv[j]));
+            Tcl_SetObjResult(interp, Tcl_NewStringObj(buildList(result).c_str(), -1));
+            return TCL_OK;
+        }, nullptr, nullptr);
+    Tcl_CreateObjCommand(interp, "apply",
+        [](ClientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]) -> int {
+            if (objc < 2) { getImpl(interp)->result = "wrong # args"; return TCL_ERROR; }
+            // apply {{args} body ?ns?} ?arg ...?
+            auto parts = parseList(Tcl_GetString(objv[1]));
+            if (parts.size() < 2) { getImpl(interp)->result = "can't parse lambda"; return TCL_ERROR; }
+            // Build a temporary proc and call it
+            std::string procDef = "proc ::_apply_tmp_ {" + parts[0] + "} {" + parts[1] + "}";
+            int code = Tcl_Eval(interp, procDef.c_str());
+            if (code != TCL_OK) return code;
+            std::string call = "::_apply_tmp_";
+            for (int i = 2; i < objc; i++) {
+                call += " {";
+                call += Tcl_GetString(objv[i]);
+                call += "}";
+            }
+            code = Tcl_Eval(interp, call.c_str());
+            // Clean up
+            Tcl_Eval(interp, "rename ::_apply_tmp_ {}");
+            return code;
+        }, nullptr, nullptr);
 }
 
 }  // namespace minitcl

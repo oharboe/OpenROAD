@@ -547,21 +547,131 @@ Tcl_Command Tcl_CreateCommand(Tcl_Interp *interp, const char *cmdName,
 }
 
 // ============================================================
-// Variables
+// Variable scoping implementation
+// ============================================================
+
+namespace minitcl {
+
+const char *InterpImpl::getVar(const std::string &name) const {
+    // Check if it's a global reference (::var)
+    if (name.size() > 2 && name[0] == ':' && name[1] == ':') {
+        std::string globalName = name.substr(2);
+        auto it = globals.find(globalName);
+        return it != globals.end() ? it->second.c_str() : nullptr;
+    }
+
+    // If we have a call frame, check locals first
+    if (!callStack.empty()) {
+        const auto &frame = callStack.back();
+
+        // Check for upvar link
+        auto linkIt = frame.upvarLinks.find(name);
+        if (linkIt != frame.upvarLinks.end()) {
+            int targetFrame = linkIt->second.first;
+            const std::string &targetName = linkIt->second.second;
+            return getVarInFrame(targetFrame, targetName);
+        }
+
+        auto it = frame.locals.find(name);
+        if (it != frame.locals.end()) return it->second.c_str();
+        return nullptr;  // In a proc, don't fall through to globals
+    }
+
+    // Global scope
+    auto it = globals.find(name);
+    return it != globals.end() ? it->second.c_str() : nullptr;
+}
+
+void InterpImpl::setVar(const std::string &name, const std::string &value) {
+    // Global reference (::var)
+    if (name.size() > 2 && name[0] == ':' && name[1] == ':') {
+        globals[name.substr(2)] = value;
+        return;
+    }
+
+    if (!callStack.empty()) {
+        auto &frame = callStack.back();
+
+        // Check for upvar link
+        auto linkIt = frame.upvarLinks.find(name);
+        if (linkIt != frame.upvarLinks.end()) {
+            int targetFrame = linkIt->second.first;
+            const std::string &targetName = linkIt->second.second;
+            setVarInFrame(targetFrame, targetName, value);
+            return;
+        }
+
+        frame.locals[name] = value;
+        return;
+    }
+
+    globals[name] = value;
+}
+
+bool InterpImpl::unsetVar(const std::string &name) {
+    if (name.size() > 2 && name[0] == ':' && name[1] == ':') {
+        return globals.erase(name.substr(2)) > 0;
+    }
+    if (!callStack.empty()) {
+        return callStack.back().locals.erase(name) > 0;
+    }
+    return globals.erase(name) > 0;
+}
+
+bool InterpImpl::varExists(const std::string &name) const {
+    return getVar(name) != nullptr;
+}
+
+const char *InterpImpl::getVarInFrame(int frameIdx,
+                                       const std::string &name) const {
+    if (frameIdx < 0) {
+        // Global scope
+        auto it = globals.find(name);
+        return it != globals.end() ? it->second.c_str() : nullptr;
+    }
+    if (frameIdx < static_cast<int>(callStack.size())) {
+        const auto &frame = callStack[frameIdx];
+        auto it = frame.locals.find(name);
+        return it != frame.locals.end() ? it->second.c_str() : nullptr;
+    }
+    return nullptr;
+}
+
+void InterpImpl::setVarInFrame(int frameIdx, const std::string &name,
+                                const std::string &value) {
+    if (frameIdx < 0) {
+        globals[name] = value;
+        return;
+    }
+    if (frameIdx < static_cast<int>(callStack.size())) {
+        callStack[frameIdx].locals[name] = value;
+    }
+}
+
+}  // namespace minitcl
+
+// ============================================================
+// Variables (C API)
 // ============================================================
 
 const char *Tcl_SetVar(Tcl_Interp *interp, const char *varName,
-                        const char *newValue, int) {
+                        const char *newValue, int flags) {
     auto *impl = minitcl::getImpl(interp);
-    impl->variables[varName] = newValue ? newValue : "";
-    return impl->variables[varName].c_str();
+    if (flags & TCL_GLOBAL_ONLY) {
+        impl->globals[varName] = newValue ? newValue : "";
+        return impl->globals[varName].c_str();
+    }
+    impl->setVar(varName, newValue ? newValue : "");
+    return impl->getVar(varName);
 }
 
-const char *Tcl_GetVar(Tcl_Interp *interp, const char *varName, int) {
+const char *Tcl_GetVar(Tcl_Interp *interp, const char *varName, int flags) {
     auto *impl = minitcl::getImpl(interp);
-    auto it = impl->variables.find(varName);
-    if (it == impl->variables.end()) return nullptr;
-    return it->second.c_str();
+    if (flags & TCL_GLOBAL_ONLY) {
+        auto it = impl->globals.find(varName);
+        return it != impl->globals.end() ? it->second.c_str() : nullptr;
+    }
+    return impl->getVar(varName);
 }
 
 const char *Tcl_GetVar2(Tcl_Interp *interp, const char *part1,

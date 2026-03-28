@@ -234,7 +234,7 @@ static int unsetCmd(ClientData, Tcl_Interp *interp, int objc,
     auto *impl = getImpl(interp);
     for (int i = 1; i < objc; i++) {
         const char *varName = Tcl_GetString(objv[i]);
-        impl->variables.erase(varName);
+        impl->unsetVar(varName);
     }
     return TCL_OK;
 }
@@ -280,10 +280,185 @@ static int putsCmd(ClientData, Tcl_Interp *interp, int objc,
     return TCL_OK;
 }
 
+static int procCmd(ClientData, Tcl_Interp *interp, int objc,
+                    Tcl_Obj *const objv[]) {
+    if (objc != 4) {
+        auto *impl = getImpl(interp);
+        impl->result = "wrong # args: should be \"proc name args body\"";
+        return TCL_ERROR;
+    }
+
+    auto *impl = getImpl(interp);
+    const char *name = Tcl_GetString(objv[1]);
+    const char *argsStr = Tcl_GetString(objv[2]);
+    const char *body = Tcl_GetString(objv[3]);
+
+    ProcDef proc;
+    proc.body = body;
+
+    // Parse parameter list
+    auto paramWords = parseScript(argsStr);
+    // The param list is a Tcl list, so parse it as words
+    // Actually, we need to parse it as a list. For now, simple split on space
+    // respecting braces
+    for (const auto &cmd : paramWords) {
+        for (const auto &word : cmd.words) {
+            const std::string &param = word.text;
+            // Check if this is a {name default} pair
+            auto inner = parseScript(param.c_str());
+            if (!inner.empty() && inner[0].words.size() == 2) {
+                proc.params.push_back(inner[0].words[0].text);
+                proc.defaults.push_back(inner[0].words[1].text);
+                proc.hasDefault.push_back(true);
+            } else {
+                if (param == "args") {
+                    proc.hasArgs = true;
+                    proc.params.push_back("args");
+                    proc.defaults.push_back("");
+                    proc.hasDefault.push_back(false);
+                } else {
+                    proc.params.push_back(param);
+                    proc.defaults.push_back("");
+                    proc.hasDefault.push_back(false);
+                }
+            }
+        }
+    }
+
+    impl->procs[name] = std::move(proc);
+
+    // Register a command that invokes the proc
+    std::string *procName = new std::string(name);
+    Tcl_CreateObjCommand(
+        interp, name,
+        [](ClientData cd, Tcl_Interp *interp, int objc,
+           Tcl_Obj *const objv[]) -> int {
+            auto *pName = static_cast<std::string *>(cd);
+            auto *impl = getImpl(interp);
+            auto it = impl->procs.find(*pName);
+            if (it == impl->procs.end()) {
+                impl->result = "proc not found: " + *pName;
+                return TCL_ERROR;
+            }
+
+            const auto &proc = it->second;
+            CallFrame frame;
+
+            // Bind arguments to parameters
+            int argIdx = 1;
+            for (size_t i = 0; i < proc.params.size(); i++) {
+                if (proc.params[i] == "args" && proc.hasArgs &&
+                    i == proc.params.size() - 1) {
+                    // Collect remaining args into a list
+                    std::string argsList;
+                    for (int j = argIdx; j < objc; j++) {
+                        if (j > argIdx) argsList += ' ';
+                        const char *s = Tcl_GetString(objv[j]);
+                        // Simple quoting
+                        bool needsQuoting = false;
+                        for (const char *p = s; *p; p++) {
+                            if (*p == ' ' || *p == '\t' || *p == '\n') {
+                                needsQuoting = true;
+                                break;
+                            }
+                        }
+                        if (needsQuoting) {
+                            argsList += '{';
+                            argsList += s;
+                            argsList += '}';
+                        } else {
+                            argsList += s;
+                        }
+                    }
+                    frame.locals["args"] = argsList;
+                    argIdx = objc;
+                } else if (argIdx < objc) {
+                    frame.locals[proc.params[i]] = Tcl_GetString(objv[argIdx++]);
+                } else if (proc.hasDefault[i]) {
+                    frame.locals[proc.params[i]] = proc.defaults[i];
+                } else {
+                    impl->result = "wrong # args: should be \"" + *pName;
+                    for (const auto &p : proc.params) {
+                        impl->result += " " + p;
+                    }
+                    impl->result += "\"";
+                    return TCL_ERROR;
+                }
+            }
+
+            // Check for too many args (unless proc has "args")
+            if (argIdx < objc && !proc.hasArgs) {
+                impl->result = "wrong # args: should be \"" + *pName;
+                for (const auto &p : proc.params) {
+                    impl->result += " " + p;
+                }
+                impl->result += "\"";
+                return TCL_ERROR;
+            }
+
+            // Push frame and evaluate body
+            impl->callStack.push_back(std::move(frame));
+            int code = Tcl_Eval(interp, proc.body.c_str());
+            impl->callStack.pop_back();
+
+            // TCL_RETURN becomes TCL_OK at proc boundary
+            if (code == TCL_RETURN) code = TCL_OK;
+
+            return code;
+        },
+        procName,
+        [](ClientData cd) { delete static_cast<std::string *>(cd); });
+
+    return TCL_OK;
+}
+
+static int returnCmd(ClientData, Tcl_Interp *interp, int objc,
+                      Tcl_Obj *const objv[]) {
+    if (objc > 2) {
+        auto *impl = getImpl(interp);
+        impl->result = "wrong # args: should be \"return ?result?\"";
+        return TCL_ERROR;
+    }
+    if (objc == 2) {
+        Tcl_SetObjResult(interp, objv[1]);
+    }
+    return TCL_RETURN;
+}
+
+static int errorCmd(ClientData, Tcl_Interp *interp, int objc,
+                     Tcl_Obj *const objv[]) {
+    if (objc < 2) {
+        auto *impl = getImpl(interp);
+        impl->result = "wrong # args: should be \"error message ?info? ?code?\"";
+        return TCL_ERROR;
+    }
+    auto *impl = getImpl(interp);
+    impl->result = Tcl_GetString(objv[1]);
+    return TCL_ERROR;
+}
+
+static int globalCmd(ClientData, Tcl_Interp *interp, int objc,
+                      Tcl_Obj *const objv[]) {
+    auto *impl = getImpl(interp);
+    if (impl->callStack.empty()) return TCL_OK;  // Already global
+
+    auto &frame = impl->callStack.back();
+    for (int i = 1; i < objc; i++) {
+        const char *varName = Tcl_GetString(objv[i]);
+        // Create upvar link to global scope (-1 = global)
+        frame.upvarLinks[varName] = {-1, varName};
+    }
+    return TCL_OK;
+}
+
 void registerBuiltins(Tcl_Interp *interp) {
     Tcl_CreateObjCommand(interp, "set", setCmd, nullptr, nullptr);
     Tcl_CreateObjCommand(interp, "unset", unsetCmd, nullptr, nullptr);
     Tcl_CreateObjCommand(interp, "puts", putsCmd, nullptr, nullptr);
+    Tcl_CreateObjCommand(interp, "proc", procCmd, nullptr, nullptr);
+    Tcl_CreateObjCommand(interp, "return", returnCmd, nullptr, nullptr);
+    Tcl_CreateObjCommand(interp, "error", errorCmd, nullptr, nullptr);
+    Tcl_CreateObjCommand(interp, "global", globalCmd, nullptr, nullptr);
 }
 
 }  // namespace minitcl

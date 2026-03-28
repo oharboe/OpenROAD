@@ -1,0 +1,6 @@
+module(
+    name = "tcl_lang",
+    version = "8.6.16.bcr.1",
+)
+
+bazel_dep(name = "rules_cc", version = "0.1.1")

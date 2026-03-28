@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cstring>
 #include <filesystem>
+#include <unistd.h>
 #include <string>
 #include <vector>
 
@@ -351,6 +352,46 @@ static int infoCmd(ClientData, Tcl_Interp *interp, int objc,
             return TCL_OK;
         }
         Tcl_SetObjResult(interp, Tcl_NewStringObj("type source", -1));
+        return TCL_OK;
+    }
+
+    if (strcmp(sub, "globals") == 0 || strcmp(sub, "vars") == 0) {
+        std::string pattern = objc >= 3 ? Tcl_GetString(objv[2]) : "*";
+        std::string result;
+        for (auto &[name, val] : impl->globals) {
+            if (Tcl_StringMatch(name.c_str(), pattern.c_str())) {
+                if (!result.empty()) result += ' ';
+                result += name;
+            }
+        }
+        Tcl_SetObjResult(interp, Tcl_NewStringObj(result.c_str(), -1));
+        return TCL_OK;
+    }
+
+    if (strcmp(sub, "locals") == 0) {
+        std::string result;
+        if (!impl->callStack.empty()) {
+            std::string pattern = objc >= 3 ? Tcl_GetString(objv[2]) : "*";
+            for (auto &[name, val] : impl->callStack.back().locals) {
+                if (Tcl_StringMatch(name.c_str(), pattern.c_str())) {
+                    if (!result.empty()) result += ' ';
+                    result += name;
+                }
+            }
+        }
+        Tcl_SetObjResult(interp, Tcl_NewStringObj(result.c_str(), -1));
+        return TCL_OK;
+    }
+
+    if (strcmp(sub, "patchlevel") == 0 || strcmp(sub, "tclversion") == 0) {
+        Tcl_SetObjResult(interp, Tcl_NewStringObj("9.0.0", -1));
+        return TCL_OK;
+    }
+
+    if (strcmp(sub, "hostname") == 0) {
+        char hostname[256] = "localhost";
+        gethostname(hostname, sizeof(hostname));
+        Tcl_SetObjResult(interp, Tcl_NewStringObj(hostname, -1));
         return TCL_OK;
     }
 

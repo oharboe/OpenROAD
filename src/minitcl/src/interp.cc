@@ -512,7 +512,23 @@ int Tcl_ListObjGetElements(Tcl_Interp *, Tcl_Obj *listPtr,
         *objvPtr = elements->empty() ? nullptr : elements->data();
         return TCL_OK;
     }
-    // TODO: parse string rep into list elements (Phase 7)
+    // Parse string rep into list elements
+    if (listPtr->bytes && listPtr->bytes[0] != '\0') {
+        auto parsed = minitcl::parseScript(listPtr->bytes);
+        auto *elements = new std::vector<Tcl_Obj *>();
+        for (const auto &cmd : parsed) {
+            for (const auto &word : cmd.words) {
+                Tcl_Obj *obj = Tcl_NewStringObj(word.text.c_str(),
+                                                 word.text.size());
+                Tcl_IncrRefCount(obj);
+                elements->push_back(obj);
+            }
+        }
+        listPtr->internalRep = elements;
+        *objcPtr = static_cast<int>(elements->size());
+        *objvPtr = elements->empty() ? nullptr : elements->data();
+        return TCL_OK;
+    }
     *objcPtr = 0;
     *objvPtr = nullptr;
     return TCL_OK;

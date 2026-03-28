@@ -85,21 +85,21 @@ static std::string parseVarName(const char *&p) {
     }
 
     // Check for array index: var(index)
+    // The index may contain $ variable references that need substitution
     if (*p == '(') {
-        name += *p++;
-        // Read until matching )
+        p++;  // skip (
+        std::string index;
         int depth = 1;
         while (*p && depth > 0) {
-            if (*p == '(') depth++;
+            if (*p == '(') { depth++; index += *p++; }
             else if (*p == ')') {
                 depth--;
                 if (depth == 0) { p++; break; }
+                index += *p++;
             }
-            name += *p++;
+            else { index += *p++; }
         }
-        name += ')';  // closing paren was consumed but not added
-        // Actually let me fix this - we consumed ')' with p++ but didn't add it
-        // The name should include everything including ()
+        name += "(" + index + ")";
     }
 
     return name;
@@ -118,6 +118,18 @@ std::string substitute(Tcl_Interp *interp, const std::string &str, int *code) {
             if (varName.empty()) {
                 result += '$';
                 continue;
+            }
+            // Substitute variables inside array index if present
+            size_t parenPos = varName.find('(');
+            if (parenPos != std::string::npos && varName.back() == ')') {
+                std::string arrayName = varName.substr(0, parenPos);
+                std::string index = varName.substr(parenPos + 1,
+                    varName.size() - parenPos - 2);
+                // Recursively substitute the index
+                int indexCode = TCL_OK;
+                std::string substIndex = substitute(interp, index, &indexCode);
+                if (indexCode != TCL_OK) { *code = indexCode; return ""; }
+                varName = arrayName + "(" + substIndex + ")";
             }
             const char *val = Tcl_GetVar(interp, varName.c_str(), 0);
             if (!val) {
@@ -166,8 +178,20 @@ int evalCommand(Tcl_Interp *interp, const std::vector<std::string> &words) {
 
     const std::string &cmdName = words[0];
 
-    // Look up command
+    // Look up command - try exact name first, then strip :: prefix
     auto it = impl->commands.find(cmdName);
+    if (it == impl->commands.end() && cmdName.size() > 2 &&
+        cmdName[0] == ':' && cmdName[1] == ':') {
+        // Try without leading ::
+        it = impl->commands.find(cmdName.substr(2));
+    }
+    if (it == impl->commands.end()) {
+        // Try stripping namespace prefix (e.g., "sta::foo" -> "foo")
+        size_t lastColon = cmdName.rfind("::");
+        if (lastColon != std::string::npos && lastColon + 2 < cmdName.size()) {
+            it = impl->commands.find(cmdName.substr(lastColon + 2));
+        }
+    }
     if (it == impl->commands.end()) {
         impl->result = "invalid command name \"" + cmdName + "\"";
         return TCL_ERROR;

@@ -732,8 +732,13 @@ const char *Tcl_SetVar(Tcl_Interp *interp, const char *varName,
                         const char *newValue, int flags) {
     auto *impl = minitcl::getImpl(interp);
     if (flags & TCL_GLOBAL_ONLY) {
-        impl->globals[varName] = newValue ? newValue : "";
-        return impl->globals[varName].c_str();
+        // Strip :: prefix for global storage
+        std::string name = varName;
+        if (name.size() > 2 && name[0] == ':' && name[1] == ':') {
+            name = name.substr(2);
+        }
+        impl->globals[name] = newValue ? newValue : "";
+        return impl->globals[name].c_str();
     }
     impl->setVar(varName, newValue ? newValue : "");
     return impl->getVar(varName);
@@ -742,7 +747,11 @@ const char *Tcl_SetVar(Tcl_Interp *interp, const char *varName,
 const char *Tcl_GetVar(Tcl_Interp *interp, const char *varName, int flags) {
     auto *impl = minitcl::getImpl(interp);
     if (flags & TCL_GLOBAL_ONLY) {
-        auto it = impl->globals.find(varName);
+        std::string name = varName;
+        if (name.size() > 2 && name[0] == ':' && name[1] == ':') {
+            name = name.substr(2);
+        }
+        auto it = impl->globals.find(name);
         return it != impl->globals.end() ? it->second.c_str() : nullptr;
     }
     return impl->getVar(varName);

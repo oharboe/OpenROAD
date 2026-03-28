@@ -26,6 +26,7 @@ load("@rules_cc//cc:cc_test.bzl", "cc_test")
     "channel_test",
     "misc_test",
     "swig_compat_test",
+    "integration_test",
 ]]
 
 # Tests that need access to internal headers

@@ -753,6 +753,21 @@ const char *InterpImpl::getVarInFrame(int frameIdx,
     }
     if (frameIdx < static_cast<int>(callStack.size())) {
         const auto &frame = callStack[frameIdx];
+        // Follow upvar chains in the target frame
+        auto linkIt = frame.upvarLinks.find(name);
+        if (linkIt != frame.upvarLinks.end()) {
+            return getVarInFrame(linkIt->second.first, linkIt->second.second);
+        }
+        // Also check array base name for upvar
+        auto paren = name.find('(');
+        if (paren != std::string::npos) {
+            std::string baseName = name.substr(0, paren);
+            linkIt = frame.upvarLinks.find(baseName);
+            if (linkIt != frame.upvarLinks.end()) {
+                std::string targetName = linkIt->second.second + name.substr(paren);
+                return getVarInFrame(linkIt->second.first, targetName);
+            }
+        }
         auto it = frame.locals.find(name);
         return it != frame.locals.end() ? it->second.c_str() : nullptr;
     }
@@ -766,7 +781,24 @@ void InterpImpl::setVarInFrame(int frameIdx, const std::string &name,
         return;
     }
     if (frameIdx < static_cast<int>(callStack.size())) {
-        callStack[frameIdx].locals[name] = value;
+        auto &frame = callStack[frameIdx];
+        // Follow upvar chains
+        auto linkIt = frame.upvarLinks.find(name);
+        if (linkIt != frame.upvarLinks.end()) {
+            setVarInFrame(linkIt->second.first, linkIt->second.second, value);
+            return;
+        }
+        auto paren = name.find('(');
+        if (paren != std::string::npos) {
+            std::string baseName = name.substr(0, paren);
+            linkIt = frame.upvarLinks.find(baseName);
+            if (linkIt != frame.upvarLinks.end()) {
+                std::string targetName = linkIt->second.second + name.substr(paren);
+                setVarInFrame(linkIt->second.first, targetName, value);
+                return;
+            }
+        }
+        frame.locals[name] = value;
     }
 }
 

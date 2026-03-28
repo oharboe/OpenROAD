@@ -335,6 +335,64 @@ static int exitCmd(ClientData, Tcl_Interp *interp, int objc,
 }
 
 // ============================================================
+// trace command (stub - variable tracing not implemented)
+// ============================================================
+
+static int traceCmd(ClientData, Tcl_Interp *, int, Tcl_Obj *const[]) {
+    // No-op stub: variable tracing is not implemented in minitcl.
+    // STA's Variables.tcl uses "trace variable" to sync Tcl vars
+    // with C++ state; the C++ side handles this directly.
+    return TCL_OK;
+}
+
+// ============================================================
+// interp command (partial - supports alias subcommand)
+// ============================================================
+
+static int interpCmd(ClientData, Tcl_Interp *interp, int objc,
+                      Tcl_Obj *const objv[]) {
+    if (objc < 2) {
+        getImpl(interp)->result = "wrong # args";
+        return TCL_ERROR;
+    }
+    const char *sub = Tcl_GetString(objv[1]);
+    if (strcmp(sub, "alias") == 0) {
+        // interp alias srcPath srcCmd targetPath targetCmd ?args...?
+        // e.g.: interp alias {} replace_design {} replace_hier_module
+        if (objc < 6) {
+            getImpl(interp)->result = "wrong # args: should be \"interp alias srcPath srcCmd targetPath targetCmd ?arg ...?\"";
+            return TCL_ERROR;
+        }
+        // objv[2] = srcPath (ignored, {} = current interp)
+        const char *newCmd = Tcl_GetString(objv[3]);
+        // objv[4] = targetPath (ignored)
+        const char *targetCmd = Tcl_GetString(objv[5]);
+        // Create alias by registering a command that evals the target
+        auto *impl = getImpl(interp);
+        auto it = impl->commands.find(targetCmd);
+        if (it == impl->commands.end()) {
+            // Try namespace-qualified
+            std::string qualified = std::string("sta::") + targetCmd;
+            it = impl->commands.find(qualified);
+            if (it != impl->commands.end()) {
+                auto imported = it->second;
+                imported.deleteProc = nullptr;
+                impl->commands[newCmd] = imported;
+                return TCL_OK;
+            }
+            impl->result = std::string("invalid command name \"") + targetCmd + "\"";
+            return TCL_ERROR;
+        }
+        auto imported = it->second;
+        imported.deleteProc = nullptr;
+        impl->commands[newCmd] = imported;
+        return TCL_OK;
+    }
+    // Other subcommands are no-ops
+    return TCL_OK;
+}
+
+// ============================================================
 // auto_path variable and unknown handler
 // ============================================================
 
@@ -360,6 +418,8 @@ void registerMiscCommands(Tcl_Interp *interp) {
     Tcl_CreateObjCommand(interp, "pwd", pwdCmd, nullptr, nullptr);
     Tcl_CreateObjCommand(interp, "cd", cdCmd, nullptr, nullptr);
     Tcl_CreateObjCommand(interp, "exit", exitCmd, nullptr, nullptr);
+    Tcl_CreateObjCommand(interp, "trace", traceCmd, nullptr, nullptr);
+    Tcl_CreateObjCommand(interp, "interp", interpCmd, nullptr, nullptr);
     Tcl_CreateObjCommand(interp, "unknown", unknownHandler, nullptr, nullptr);
 
     // Set auto_path variable

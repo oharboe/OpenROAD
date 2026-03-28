@@ -22,14 +22,22 @@ static bool parseBraced(const char *&p, std::string &out) {
     int depth = 1;
     out.clear();
     while (*p && depth > 0) {
-        if (*p == '\\' && *(p + 1) == '{') {
+        if (*p == '\\') {
+            if (*(p + 1) == '\\') {
+                // Escaped backslash: consume both, don't affect brace counting
+                out += *p++;
+                out += *p++;
+                continue;
+            }
+            if (*(p + 1) == '{' || *(p + 1) == '}') {
+                // Escaped brace: include literally, don't count
+                out += *p++;
+                out += *p++;
+                continue;
+            }
+            // Other backslash sequence: include literally
             out += *p++;
-            out += *p++;
-            continue;
-        }
-        if (*p == '\\' && *(p + 1) == '}') {
-            out += *p++;
-            out += *p++;
+            if (*p) out += *p++;
             continue;
         }
         if (*p == '{') {

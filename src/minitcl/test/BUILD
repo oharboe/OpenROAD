@@ -15,6 +15,7 @@ load("@rules_cc//cc:cc_test.bzl", "cc_test")
     "obj_test",
     "eval_test",
     "proc_test",
+    "control_test",
 ]]
 
 # Tests that need access to internal headers

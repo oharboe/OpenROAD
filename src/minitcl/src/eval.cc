@@ -2,6 +2,7 @@
 // MiniTcl - Evaluation engine
 
 #include "eval.h"
+#include "control.h"
 #include "interp.h"
 #include "parser.h"
 
@@ -459,6 +460,7 @@ void registerBuiltins(Tcl_Interp *interp) {
     Tcl_CreateObjCommand(interp, "return", returnCmd, nullptr, nullptr);
     Tcl_CreateObjCommand(interp, "error", errorCmd, nullptr, nullptr);
     Tcl_CreateObjCommand(interp, "global", globalCmd, nullptr, nullptr);
+    registerControlCommands(interp);
 }
 
 }  // namespace minitcl

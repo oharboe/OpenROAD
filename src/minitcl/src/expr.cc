@@ -283,7 +283,7 @@ class ExprParser {
             return v;
         }
 
-        // String literal
+        // String literal (double-quoted)
         if (*p_ == '"') {
             p_++;
             std::string s;
@@ -293,6 +293,26 @@ class ExprParser {
             }
             if (*p_ == '"') p_++;
             return ExprVal::makeString(backslashSubst(s));
+        }
+
+        // Braced string literal (no substitution)
+        if (*p_ == '{') {
+            p_++;
+            std::string s;
+            int depth = 1;
+            while (*p_ && depth > 0) {
+                if (*p_ == '{') depth++;
+                else if (*p_ == '}') { depth--; if (depth == 0) break; }
+                s += *p_++;
+            }
+            if (*p_ == '}') p_++;
+            // Try to parse as number
+            char *end;
+            long long ival = strtoll(s.c_str(), &end, 0);
+            if (end != s.c_str() && *end == '\0') return ExprVal::makeInt(ival);
+            double dval = strtod(s.c_str(), &end);
+            if (end != s.c_str() && *end == '\0') return ExprVal::makeDouble(dval);
+            return ExprVal::makeString(s);
         }
 
         // Variable substitution

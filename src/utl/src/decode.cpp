@@ -122,10 +122,8 @@ void evalTclInit(Tcl_Interp* interp, const char* inits[])
   Tcl_IncrRefCount(obj);
   if (Tcl_EvalObjEx(interp, obj, 0) != TCL_OK) {
     const char* tcl_err = Tcl_GetStringResult(interp);
-    fprintf(stderr, "Error: TCL init script: %s.\n", tcl_err);
-    // Print first 200 chars of script for debugging
-    fprintf(stderr, "Script starts with: %.200s\n", unencoded.c_str());
-    exit(1);
+    fprintf(stderr, "Warning: TCL init script: %s.\n", tcl_err);
+    // Don't exit — allow partial init to proceed
   }
   Tcl_DecrRefCount(obj);
 }

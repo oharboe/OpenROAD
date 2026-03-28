@@ -2,6 +2,7 @@
 # MiniTcl tests - idiomatic Bazel C++ tests, zero external dependencies
 
 load("@rules_cc//cc:cc_test.bzl", "cc_test")
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
 
 [cc_test(
     name = test_name,
@@ -42,3 +43,27 @@ load("@rules_cc//cc:cc_test.bzl", "cc_test")
     "parser_test",
     "vfs_test",
 ]]
+
+# OpenROAD integration tests: run .tcl scripts through the openroad binary
+# to verify minitcl works end-to-end with SWIG commands, STA init, etc.
+
+_OPENROAD_TCL_TESTS = {
+    "tcl_smoke": [],
+    "tcl_sta_commands": [],
+    "tcl_read_design": ["//test:regression_resources"],
+    "tcl_floorplan": ["//test:regression_resources"],
+}
+
+[sh_test(
+    name = test_name,
+    srcs = ["openroad_tcl_test.sh"],
+    args = [
+        "$(rootpath //:openroad)",
+        "$(rootpath %s.tcl)" % test_name,
+    ],
+    data = [
+        "//:openroad",
+        "%s.tcl" % test_name,
+    ] + extra_data,
+    size = "medium",
+) for test_name, extra_data in _OPENROAD_TCL_TESTS.items()]

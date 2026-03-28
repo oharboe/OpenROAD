@@ -349,6 +349,24 @@ static int infoCmd(ClientData, Tcl_Interp *interp, int objc,
         return TCL_OK;
     }
 
+    if (strcmp(sub, "complete") == 0) {
+        if (objc != 3) { impl->result = "wrong # args"; return TCL_ERROR; }
+        const char *str = Tcl_GetString(objv[2]);
+        // Check if the string is a complete Tcl command (balanced braces/quotes)
+        int braces = 0;
+        bool in_quote = false;
+        for (const char *p = str; *p; p++) {
+            if (*p == '\\' && *(p + 1)) { p++; continue; }
+            if (*p == '"' && braces == 0) { in_quote = !in_quote; continue; }
+            if (!in_quote) {
+                if (*p == '{') braces++;
+                else if (*p == '}') braces--;
+            }
+        }
+        Tcl_SetObjResult(interp, Tcl_NewIntObj(braces == 0 && !in_quote ? 1 : 0));
+        return TCL_OK;
+    }
+
     impl->result = std::string("unknown info subcommand \"") + sub + "\"";
     return TCL_ERROR;
 }

@@ -267,7 +267,8 @@ static int infoCmd(ClientData, Tcl_Interp *interp, int objc,
     auto *impl = getImpl(interp);
     const char *sub = Tcl_GetString(objv[1]);
 
-    if (strcmp(sub, "exists") == 0) {
+    // "info exist" is a common abbreviation of "info exists" in real Tcl
+    if (strcmp(sub, "exists") == 0 || strcmp(sub, "exist") == 0) {
         if (objc != 3) { impl->result = "wrong # args"; return TCL_ERROR; }
         const char *varName = Tcl_GetString(objv[2]);
         Tcl_SetObjResult(interp, Tcl_NewIntObj(impl->getVar(varName) != nullptr ? 1 : 0));

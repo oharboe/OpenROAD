@@ -243,6 +243,18 @@ int evalCommand(Tcl_Interp *interp, const std::vector<std::string> &words) {
 // Built-in commands
 // ============================================================
 
+// Qualify a variable name with the current namespace when at global scope
+static std::string qualifyVarName(InterpImpl *impl, const char *name) {
+    // Already qualified or in a proc frame — use as-is
+    if (name[0] == ':' && name[1] == ':') return name;
+    if (!impl->callStack.empty()) return name;
+    // At global scope in a non-root namespace — qualify
+    if (impl->currentNamespace != "::" && !impl->currentNamespace.empty()) {
+        return impl->currentNamespace.substr(2) + "::" + name;
+    }
+    return name;
+}
+
 static int setCmd(ClientData, Tcl_Interp *interp, int objc,
                    Tcl_Obj *const objv[]) {
     if (objc < 2 || objc > 3) {
@@ -251,17 +263,17 @@ static int setCmd(ClientData, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
 
-    const char *varName = Tcl_GetString(objv[1]);
+    auto *impl = getImpl(interp);
+    std::string varName = qualifyVarName(impl, Tcl_GetString(objv[1]));
 
     if (objc == 3) {
         const char *value = Tcl_GetString(objv[2]);
-        Tcl_SetVar(interp, varName, value, 0);
+        Tcl_SetVar(interp, varName.c_str(), value, 0);
     }
 
-    const char *val = Tcl_GetVar(interp, varName, 0);
+    const char *val = Tcl_GetVar(interp, varName.c_str(), 0);
     if (!val) {
-        auto *impl = getImpl(interp);
-        impl->result = std::string("can't read \"") + varName + "\": no such variable";
+        impl->result = std::string("can't read \"") + Tcl_GetString(objv[1]) + "\": no such variable";
         return TCL_ERROR;
     }
     Tcl_SetObjResult(interp, Tcl_NewStringObj(val, -1));

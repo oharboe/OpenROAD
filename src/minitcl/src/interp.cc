@@ -4,6 +4,7 @@
 #include "interp.h"
 #include "eval.h"
 #include "parser.h"
+#include "vfs.h"
 
 #include <cstdarg>
 #include <cstdio>
@@ -118,6 +119,15 @@ int Tcl_Eval(Tcl_Interp *interp, const char *script) {
 }
 
 int Tcl_EvalFile(Tcl_Interp *interp, const char *fileName) {
+    // Check VFS first
+    size_t vfsLen = 0;
+    const char *vfsContent = minitcl_vfs_get(fileName, &vfsLen);
+    if (vfsContent) {
+        std::string script(vfsContent, vfsLen);
+        return Tcl_Eval(interp, script.c_str());
+    }
+
+    // Fall back to real filesystem
     FILE *fp = fopen(fileName, "r");
     if (!fp) {
         auto *impl = minitcl::getImpl(interp);

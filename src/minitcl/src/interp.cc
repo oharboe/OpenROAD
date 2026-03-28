@@ -102,8 +102,9 @@ void Tcl_Main(int argc, char **argv, Tcl_AppInitProc *appInitProc) {
             exit(1);
         }
     } else {
-        // Interactive mode: simple line-by-line eval
+        // Interactive mode: accumulate lines until command is complete
         char line[4096];
+        std::string cmd;
         fprintf(stdout, "%% ");
         fflush(stdout);
         while (fgets(line, sizeof(line), stdin)) {
@@ -111,13 +112,38 @@ void Tcl_Main(int argc, char **argv, Tcl_AppInitProc *appInitProc) {
             size_t len = strlen(line);
             if (len > 0 && line[len - 1] == '\n') line[len - 1] = '\0';
 
-            if (line[0] == '\0') {
+            if (cmd.empty() && line[0] == '\0') {
                 fprintf(stdout, "%% ");
                 fflush(stdout);
                 continue;
             }
 
-            int code = Tcl_Eval(interp, line);
+            if (!cmd.empty()) cmd += '\n';
+            cmd += line;
+
+            // Check if command is complete (balanced braces/quotes)
+            int braces = 0;
+            bool in_quote = false;
+            bool complete = true;
+            for (const char *p = cmd.c_str(); *p; p++) {
+                if (*p == '\\' && *(p + 1)) { p++; continue; }
+                if (*p == '"' && braces == 0) { in_quote = !in_quote; }
+                if (!in_quote) {
+                    if (*p == '{') braces++;
+                    else if (*p == '}') braces--;
+                }
+            }
+            // Also check for backslash continuation at end of line
+            if (!cmd.empty() && cmd.back() == '\\') complete = false;
+            if (braces != 0 || in_quote) complete = false;
+
+            if (!complete) {
+                // Need more input
+                continue;
+            }
+
+            int code = Tcl_Eval(interp, cmd.c_str());
+            cmd.clear();
             const char *result = Tcl_GetStringResult(interp);
             if (result[0] != '\0') {
                 fprintf(stdout, "%s\n", result);

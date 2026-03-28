@@ -56,6 +56,7 @@ _OPENROAD_TCL_TESTS = {
     "tcl_route": ["//test:regression_resources"],
     "tcl_smoke": [],
     "tcl_sta_commands": [],
+    "tcl_timing": ["//test:regression_resources"],
     "tcl_write_output": ["//test:regression_resources"],
 }
 

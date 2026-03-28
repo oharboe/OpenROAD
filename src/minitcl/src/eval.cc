@@ -6,6 +6,7 @@
 #include "dict_array.h"
 #include "expr.h"
 #include "file_cmds.h"
+#include "misc_cmds.h"
 #include "interp.h"
 #include "parser.h"
 #include "namespace.h"
@@ -478,6 +479,7 @@ void registerBuiltins(Tcl_Interp *interp) {
     registerGlobCommand(interp);
     registerFileCommands(interp);
     registerIOCommands(interp);
+    registerMiscCommands(interp);
 }
 
 }  // namespace minitcl

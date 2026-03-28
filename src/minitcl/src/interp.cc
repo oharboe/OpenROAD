@@ -71,12 +71,50 @@ void Tcl_Main(int argc, char **argv, Tcl_AppInitProc *appInitProc) {
     Tcl_Interp *interp = Tcl_CreateInterp();
     if (appInitProc) {
         if (appInitProc(interp) != TCL_OK) {
-            fprintf(stderr, "application-specific initialization failed\n");
+            fprintf(stderr, "application-specific initialization failed: %s\n",
+                    Tcl_GetStringResult(interp));
             Tcl_DeleteInterp(interp);
             exit(1);
         }
     }
-    // TODO: Phase 14 - implement interactive loop and file sourcing
+
+    // If a script file was provided as argv[1], source it
+    if (argc >= 2 && argv[1] && argv[1][0] != '\0') {
+        int code = Tcl_EvalFile(interp, argv[1]);
+        if (code != TCL_OK) {
+            fprintf(stderr, "%s\n", Tcl_GetStringResult(interp));
+            Tcl_DeleteInterp(interp);
+            exit(1);
+        }
+    } else {
+        // Interactive mode: simple line-by-line eval
+        char line[4096];
+        fprintf(stdout, "%% ");
+        fflush(stdout);
+        while (fgets(line, sizeof(line), stdin)) {
+            // Strip trailing newline
+            size_t len = strlen(line);
+            if (len > 0 && line[len - 1] == '\n') line[len - 1] = '\0';
+
+            if (line[0] == '\0') {
+                fprintf(stdout, "%% ");
+                fflush(stdout);
+                continue;
+            }
+
+            int code = Tcl_Eval(interp, line);
+            const char *result = Tcl_GetStringResult(interp);
+            if (result[0] != '\0') {
+                fprintf(stdout, "%s\n", result);
+            }
+            if (code == TCL_ERROR) {
+                fprintf(stderr, "Error: %s\n", result);
+            }
+            fprintf(stdout, "%% ");
+            fflush(stdout);
+        }
+    }
+
     Tcl_DeleteInterp(interp);
 }
 

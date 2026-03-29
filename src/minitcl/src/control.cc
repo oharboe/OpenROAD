@@ -214,12 +214,23 @@ static int foreachCmd(ClientData, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
 
-    const char *varName = Tcl_GetString(objv[1]);
-    const char *listStr = Tcl_GetString(objv[2]);
     const char *body = Tcl_GetString(objv[3]);
 
+    // Parse variable names (supports multi-variable: foreach {a b} list body)
+    auto varCmds = parseScript(Tcl_GetString(objv[1]));
+    std::vector<std::string> varNames;
+    for (const auto &cmd : varCmds) {
+        for (const auto &word : cmd.words) {
+            varNames.push_back(word.text);
+        }
+    }
+    if (varNames.empty()) {
+        getImpl(interp)->result = "foreach varName is empty";
+        return TCL_ERROR;
+    }
+
     // Parse list into elements
-    auto listCmds = parseScript(listStr);
+    auto listCmds = parseScript(Tcl_GetString(objv[2]));
     std::vector<std::string> elements;
     for (const auto &cmd : listCmds) {
         for (const auto &word : cmd.words) {
@@ -227,8 +238,12 @@ static int foreachCmd(ClientData, Tcl_Interp *interp, int objc,
         }
     }
 
-    for (const auto &elem : elements) {
-        Tcl_SetVar(interp, varName, elem.c_str(), 0);
+    size_t stride = varNames.size();
+    for (size_t i = 0; i < elements.size(); i += stride) {
+        for (size_t v = 0; v < stride; v++) {
+            const char *val = (i + v < elements.size()) ? elements[i + v].c_str() : "";
+            Tcl_SetVar(interp, varNames[v].c_str(), val, 0);
+        }
         int code = Tcl_Eval(interp, body);
         if (code == TCL_BREAK) break;
         if (code == TCL_CONTINUE) continue;

@@ -149,12 +149,16 @@ std::string substitute(Tcl_Interp *interp, const std::string &str, int *code) {
                 return "";
             }
             std::string cmdStr(p, end - p);
-            int rc = Tcl_Eval(interp, cmdStr.c_str());
-            if (rc != TCL_OK) {
-                *code = rc;
-                return "";
+            if (cmdStr.empty()) {
+                // [] evaluates to empty string
+            } else {
+                int rc = Tcl_Eval(interp, cmdStr.c_str());
+                if (rc != TCL_OK) {
+                    *code = rc;
+                    return "";
+                }
+                result += Tcl_GetStringResult(interp);
             }
-            result += Tcl_GetStringResult(interp);
             p = end + 1;  // skip ]
         } else if (*p == '\\') {
             // Backslash substitution

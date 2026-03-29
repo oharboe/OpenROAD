@@ -199,6 +199,23 @@ int evalCommand(Tcl_Interp *interp, const std::vector<std::string> &words) {
             it = impl->commands.find(cmdName.substr(lastColon + 2));
         }
     }
+    // Try prefix matching (Tcl command abbreviation)
+    if (it == impl->commands.end()) {
+        std::string prefix = cmdName;
+        // Also try with stripped :: prefix
+        if (prefix.size() > 2 && prefix[0] == ':' && prefix[1] == ':')
+            prefix = prefix.substr(2);
+        decltype(it) match = impl->commands.end();
+        int matchCount = 0;
+        for (auto ci = impl->commands.begin(); ci != impl->commands.end(); ++ci) {
+            if (ci->first.compare(0, prefix.size(), prefix) == 0) {
+                match = ci;
+                matchCount++;
+                if (matchCount > 1) break;  // ambiguous
+            }
+        }
+        if (matchCount == 1) it = match;
+    }
     if (it == impl->commands.end()) {
         impl->result = "invalid command name \"" + cmdName + "\"";
         return TCL_ERROR;
@@ -414,10 +431,12 @@ static int procCmd(ClientData, Tcl_Interp *interp, int objc,
                     for (int j = argIdx; j < objc; j++) {
                         if (j > argIdx) argsList += ' ';
                         const char *s = Tcl_GetString(objv[j]);
-                        // Simple quoting
-                        bool needsQuoting = false;
+                        // Simple quoting: quote if contains whitespace or is empty
+                        bool needsQuoting = (*s == '\0');
                         for (const char *p = s; *p; p++) {
-                            if (*p == ' ' || *p == '\t' || *p == '\n') {
+                            if (*p == ' ' || *p == '\t' || *p == '\n' ||
+                                *p == '{' || *p == '}' || *p == '"' ||
+                                *p == '\\' || *p == ';') {
                                 needsQuoting = true;
                                 break;
                             }

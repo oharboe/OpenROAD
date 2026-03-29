@@ -277,9 +277,15 @@ static int tryCmd(ClientData, Tcl_Interp *interp, int objc,
         }
     }
 
-    // Restore original result
+    // Restore original result (clear resultObj to avoid stale object
+    // from finally block taking priority in Tcl_GetStringResult)
     if (code != TCL_OK) {
-        getImpl(interp)->result = savedResult;
+        auto *impl = getImpl(interp);
+        if (impl->resultObj) {
+            Tcl_DecrRefCount(impl->resultObj);
+            impl->resultObj = nullptr;
+        }
+        impl->result = savedResult;
     }
     return code;
 }

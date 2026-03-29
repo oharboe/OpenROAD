@@ -91,11 +91,9 @@ static bool parseBareWord(const char *&p, std::string &out) {
     while (*p && *p != ' ' && *p != '\t' && *p != '\n' && *p != '\r' &&
            *p != ';') {
         if (*p == '\\' && *(p + 1) == '\n') {
-            // Backslash-newline: line continuation
-            p += 2;
-            // Skip leading whitespace on next line
-            while (*p == ' ' || *p == '\t') p++;
-            out += ' ';
+            // Backslash-newline in bare word: end this word.
+            // The continuation is handled at the command level between words.
+            break;
         } else if (*p == '\\' && *(p + 1)) {
             out += *p++;
             out += *p++;

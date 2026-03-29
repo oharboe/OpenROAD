@@ -283,7 +283,19 @@ static int uplevelCmd(ClientData, Tcl_Interp *interp, int objc,
         impl->callStack.pop_back();
     }
 
+    // When going to global scope (#0), reset namespace context
+    std::string savedNamespace;
+    if (level == -1) {
+        savedNamespace = impl->currentNamespace;
+        impl->currentNamespace = "::";
+    }
+
     int code = Tcl_Eval(interp, script.c_str());
+
+    // Restore namespace
+    if (level == -1) {
+        impl->currentNamespace = savedNamespace;
+    }
 
     // Restore frames
     for (int i = framesToPop - 1; i >= 0; i--) {

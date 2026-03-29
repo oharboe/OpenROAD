@@ -83,6 +83,47 @@ static int dictCmd(ClientData, Tcl_Interp *interp, int objc,
         return TCL_OK;
     }
 
+    if (strcmp(sub, "incr") == 0) {
+        if (objc < 4 || objc > 5) { getImpl(interp)->result = "wrong # args"; return TCL_ERROR; }
+        const char *varName = Tcl_GetString(objv[2]);
+        const char *key = Tcl_GetString(objv[3]);
+        int increment = 1;
+        if (objc == 5) {
+            if (Tcl_GetIntFromObj(interp, objv[4], &increment) != TCL_OK) return TCL_ERROR;
+        }
+        const char *cur = Tcl_GetVar(interp, varName, 0);
+        std::vector<std::string> elems;
+        if (cur && *cur) elems = parseList(cur);
+        bool found = false;
+        for (size_t i = 0; i + 1 < elems.size(); i += 2) {
+            if (elems[i] == key) {
+                int val = atoi(elems[i + 1].c_str()) + increment;
+                elems[i + 1] = std::to_string(val);
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            elems.push_back(key);
+            elems.push_back(std::to_string(increment));
+        }
+        std::string result;
+        for (size_t i = 0; i < elems.size(); i++) {
+            if (i > 0) result += ' ';
+            result += elems[i];
+        }
+        Tcl_SetVar(interp, varName, result.c_str(), 0);
+        Tcl_SetObjResult(interp, Tcl_NewIntObj(found ? atoi(elems[0].c_str()) : increment));
+        // Return the new value of the key
+        for (size_t i = 0; i + 1 < elems.size(); i += 2) {
+            if (elems[i] == key) {
+                Tcl_SetObjResult(interp, Tcl_NewIntObj(atoi(elems[i + 1].c_str())));
+                break;
+            }
+        }
+        return TCL_OK;
+    }
+
     if (strcmp(sub, "keys") == 0) {
         if (objc < 3) { getImpl(interp)->result = "wrong # args"; return TCL_ERROR; }
         auto elems = parseList(Tcl_GetString(objv[2]));
@@ -351,7 +392,11 @@ static int infoCmd(ClientData, Tcl_Interp *interp, int objc,
             Tcl_SetObjResult(interp, Tcl_NewIntObj(impl->callStack.size()));
             return TCL_OK;
         }
-        Tcl_SetObjResult(interp, Tcl_NewStringObj("type source", -1));
+        // Return a dict with type, line, and cmd keys
+        // minitcl doesn't track source line numbers per frame,
+        // so return type "eval" with line 0 to avoid false matches
+        // on "source" type in sdc_file_line
+        Tcl_SetObjResult(interp, Tcl_NewStringObj("type eval line 0 cmd {}", -1));
         return TCL_OK;
     }
 

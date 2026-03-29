@@ -144,6 +144,62 @@ TEST(IntegrationTest, FlowScriptPattern) {
     Tcl_DeleteInterp(interp);
 }
 
+// Test ORFS patterns: quotes inside brackets in double-quoted strings,
+// array variables in expr, and expr short-circuit evaluation.
+// These patterns appear in ORFS util.tcl log_cmd and flow control.
+TEST(IntegrationTest, OrfsLogCmdPattern) {
+    Tcl_Interp* interp = Tcl_CreateInterp();
+    // The log_cmd pattern: "$cmd[join [lmap arg $args { ... "\"$arg\"" ... }]]"
+    ASSERT_EQ(Tcl_Eval(interp,
+        "proc log_fmt { cmd args } {\n"
+        "  set log \"$cmd[join [lmap arg $args { format \" %s\" "
+        "[expr { [string match {* *} $arg] ? \"\\\"$arg\\\"\" : \"$arg\" }]"
+        " }] \"\"]\"\n"
+        "  return $log\n"
+        "}\n"
+        "log_fmt read_liberty /tmp/test.lib"
+    ), TCL_OK);
+    EXPECT_STREQ(Tcl_GetStringResult(interp), "read_liberty /tmp/test.lib");
+
+    // Test with spaces in arg (should get quoted)
+    ASSERT_EQ(Tcl_Eval(interp, "log_fmt source {path with spaces}"), TCL_OK);
+    EXPECT_STREQ(Tcl_GetStringResult(interp), "source \"path with spaces\"");
+    Tcl_DeleteInterp(interp);
+}
+
+TEST(IntegrationTest, OrfsEnvArrayInExpr) {
+    Tcl_Interp* interp = Tcl_CreateInterp();
+    // ORFS pattern: if { $::env(KEEP_VARS) } { return }
+    Tcl_SetVar(interp, "env(KEEP_VARS)", "0", TCL_GLOBAL_ONLY);
+    ASSERT_EQ(Tcl_Eval(interp,
+        "proc check_keep {} {\n"
+        "  if { $::env(KEEP_VARS) } { return 1 }\n"
+        "  return 0\n"
+        "}\n"
+        "check_keep"
+    ), TCL_OK);
+    EXPECT_STREQ(Tcl_GetStringResult(interp), "0");
+    Tcl_DeleteInterp(interp);
+}
+
+TEST(IntegrationTest, OrfsNullShortCircuit) {
+    Tcl_Interp* interp = Tcl_CreateInterp();
+    // ORFS pattern: [$db getChip] != "NULL" && [[$db getChip] getBlock] != "NULL"
+    // When getChip returns "NULL", the second branch must NOT be evaluated
+    ASSERT_EQ(Tcl_Eval(interp,
+        "proc getChip {} { return NULL }\n"
+        "proc test_null {} {\n"
+        "  if { [getChip] != \"NULL\" && [[getChip] getBlock] != \"NULL\" } {\n"
+        "    return loaded\n"
+        "  }\n"
+        "  return empty\n"
+        "}\n"
+        "test_null"
+    ), TCL_OK);
+    EXPECT_STREQ(Tcl_GetStringResult(interp), "empty");
+    Tcl_DeleteInterp(interp);
+}
+
 // Test {*} argument expansion (used in ORFS scripts)
 TEST(IntegrationTest, ArgumentExpansion) {
     Tcl_Interp* interp = Tcl_CreateInterp();

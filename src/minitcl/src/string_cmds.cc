@@ -493,21 +493,56 @@ static int lsearchCmd(ClientData, Tcl_Interp *interp, int objc,
     const char *pattern = Tcl_GetString(objv[objc - 1]);
     bool exact = false;
     bool useGlob = false;
+    bool inlineMode = false;
+    bool allMode = false;
+    bool notMode = false;
     for (int i = 1; i < objc - 2; i++) {
         const char *opt = Tcl_GetString(objv[i]);
         if (strcmp(opt, "-exact") == 0) exact = true;
         else if (strcmp(opt, "-glob") == 0) useGlob = true;
+        else if (strcmp(opt, "-inline") == 0) inlineMode = true;
+        else if (strcmp(opt, "-all") == 0) allMode = true;
+        else if (strcmp(opt, "-not") == 0) notMode = true;
     }
+
+    if (allMode) {
+        // Return all matching (or non-matching with -not) elements/indices
+        std::vector<std::string> results;
+        for (size_t i = 0; i < elems.size(); i++) {
+            bool match = exact ? (elems[i] == pattern)
+                               : useGlob ? Tcl_StringMatch(elems[i].c_str(), pattern)
+                                         : Tcl_StringMatch(elems[i].c_str(), pattern);
+            if (notMode) match = !match;
+            if (match) {
+                if (inlineMode)
+                    results.push_back(elems[i]);
+                else
+                    results.push_back(std::to_string(i));
+            }
+        }
+        Tcl_SetObjResult(interp, Tcl_NewStringObj(
+            buildList(results).c_str(), -1));
+        return TCL_OK;
+    }
+
+    // Single-result mode: return first match
     for (size_t i = 0; i < elems.size(); i++) {
         bool match = exact ? (elems[i] == pattern)
                            : useGlob ? Tcl_StringMatch(elems[i].c_str(), pattern)
-                                     : (elems[i] == pattern);
+                                     : Tcl_StringMatch(elems[i].c_str(), pattern);
+        if (notMode) match = !match;
         if (match) {
-            Tcl_SetObjResult(interp, Tcl_NewIntObj(i));
+            if (inlineMode)
+                Tcl_SetObjResult(interp, Tcl_NewStringObj(elems[i].c_str(), -1));
+            else
+                Tcl_SetObjResult(interp, Tcl_NewIntObj(i));
             return TCL_OK;
         }
     }
-    Tcl_SetObjResult(interp, Tcl_NewIntObj(-1));
+    if (inlineMode)
+        Tcl_SetObjResult(interp, Tcl_NewStringObj("", 0));
+    else
+        Tcl_SetObjResult(interp, Tcl_NewIntObj(-1));
     return TCL_OK;
 }
 

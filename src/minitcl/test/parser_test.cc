@@ -461,3 +461,16 @@ TEST(ParserTest, BracedMultilineBody) {
     EXPECT_EQ(cmds[0].words[3].text, "\n  puts $i\n");
     EXPECT_TRUE(cmds[0].words[3].braced);
 }
+
+TEST(ParserTest, QuotedStringWithBracketContainingQuotes) {
+    // Quotes inside [...] inside "..." should not end the outer quote.
+    // This is the ORFS log_cmd pattern: "$cmd[join [list "\"$arg\""]]"
+    auto cmds = parse("set x \"hello[join [list \"world\"]]\"");
+    ASSERT_EQ(cmds.size(), 1u);
+    ASSERT_EQ(cmds[0].words.size(), 3u);
+    EXPECT_EQ(cmds[0].words[0].text, "set");
+    EXPECT_EQ(cmds[0].words[1].text, "x");
+    // The quoted string should contain the full content including [...]
+    EXPECT_FALSE(cmds[0].words[2].braced);
+    EXPECT_NE(cmds[0].words[2].text.find("[join"), std::string::npos);
+}

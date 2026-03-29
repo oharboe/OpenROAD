@@ -59,7 +59,7 @@ struct ExprVal {
 class ExprParser {
   public:
     ExprParser(Tcl_Interp *interp, const char *expr)
-        : interp_(interp), p_(expr), code_(TCL_OK) {}
+        : interp_(interp), p_(expr), code_(TCL_OK), noEval_(0) {}
 
     ExprVal parse() {
         skipWS();
@@ -73,6 +73,7 @@ class ExprParser {
     Tcl_Interp *interp_;
     const char *p_;
     int code_;
+    int noEval_;  // >0 means skip command/variable evaluation (short-circuit)
 
     void skipWS() {
         while (*p_ == ' ' || *p_ == '\t' || *p_ == '\n' || *p_ == '\r' ||
@@ -98,11 +99,22 @@ class ExprParser {
         skipWS();
         if (*p_ == '?') {
             p_++;
-            ExprVal trueVal = parseTernary();
-            skipWS();
-            if (*p_ == ':') p_++;
-            ExprVal falseVal = parseTernary();
-            return v.asBool() ? trueVal : falseVal;
+            if (v.asBool()) {
+                ExprVal trueVal = parseTernary();
+                skipWS();
+                if (*p_ == ':') p_++;
+                noEval_++;
+                parseTernary();
+                noEval_--;
+                return trueVal;
+            } else {
+                noEval_++;
+                parseTernary();
+                noEval_--;
+                skipWS();
+                if (*p_ == ':') p_++;
+                return parseTernary();
+            }
         }
         return v;
     }
@@ -112,8 +124,16 @@ class ExprParser {
         skipWS();
         while (*p_ == '|' && *(p_ + 1) == '|') {
             p_ += 2;
-            ExprVal r = parseAnd();
-            v = ExprVal::makeInt(v.asBool() || r.asBool());
+            if (v.asBool()) {
+                // Short-circuit: parse to advance p_ but don't evaluate
+                noEval_++;
+                parseAnd();
+                noEval_--;
+                v = ExprVal::makeInt(1);
+            } else {
+                ExprVal r = parseAnd();
+                v = ExprVal::makeInt(r.asBool());
+            }
             skipWS();
         }
         return v;
@@ -124,8 +144,16 @@ class ExprParser {
         skipWS();
         while (*p_ == '&' && *(p_ + 1) == '&') {
             p_ += 2;
-            ExprVal r = parseEquality();
-            v = ExprVal::makeInt(v.asBool() && r.asBool());
+            if (!v.asBool()) {
+                // Short-circuit: parse to advance p_ but don't evaluate
+                noEval_++;
+                parseEquality();
+                noEval_--;
+                v = ExprVal::makeInt(0);
+            } else {
+                ExprVal r = parseEquality();
+                v = ExprVal::makeInt(r.asBool());
+            }
             skipWS();
         }
         return v;
@@ -310,16 +338,35 @@ class ExprParser {
             return v;
         }
 
-        // String literal (double-quoted)
+        // String literal (double-quoted) — supports $var and [cmd] substitution
         if (*p_ == '"') {
             p_++;
             std::string s;
             while (*p_ && *p_ != '"') {
                 if (*p_ == '\\' && *(p_ + 1)) { s += *p_++; s += *p_++; }
-                else s += *p_++;
+                else if (*p_ == '[') {
+                    // Bracket inside quoted string — skip to matching ]
+                    s += *p_++;
+                    int bd = 1;
+                    while (*p_ && bd > 0) {
+                        if (*p_ == '[') bd++;
+                        else if (*p_ == ']') bd--;
+                        s += *p_++;
+                    }
+                } else {
+                    s += *p_++;
+                }
             }
             if (*p_ == '"') p_++;
-            return ExprVal::makeString(backslashSubst(s));
+            if (noEval_) return ExprVal::makeString("");
+            // Perform variable and command substitution on the string
+            int substCode = TCL_OK;
+            std::string result = minitcl::substitute(interp_, backslashSubst(s), &substCode);
+            if (substCode != TCL_OK) {
+                code_ = substCode;
+                return ExprVal::makeString("");
+            }
+            return ExprVal::makeString(result);
         }
 
         // Braced string literal (no substitution)
@@ -355,7 +402,35 @@ class ExprParser {
                     if (*p_ == ':') { varName += "::"; p_ += 2; }
                     else varName += *p_++;
                 }
+                // Array index: $var(index)
+                if (*p_ == '(' && !varName.empty()) {
+                    p_++;  // skip (
+                    std::string index;
+                    int depth = 1;
+                    while (*p_ && depth > 0) {
+                        if (*p_ == '(') { depth++; index += *p_++; }
+                        else if (*p_ == ')') {
+                            depth--;
+                            if (depth == 0) { p_++; break; }
+                            index += *p_++;
+                        }
+                        else { index += *p_++; }
+                    }
+                    if (!noEval_) {
+                        // Substitute variables in the index
+                        int indexCode = TCL_OK;
+                        std::string substIndex = minitcl::substitute(interp_, index, &indexCode);
+                        if (indexCode != TCL_OK) {
+                            error("error in array index");
+                            return ExprVal::makeInt(0);
+                        }
+                        varName += "(" + substIndex + ")";
+                    } else {
+                        varName += "(" + index + ")";
+                    }
+                }
             }
+            if (noEval_) return ExprVal::makeInt(0);
             const char *val = Tcl_GetVar(interp_, varName.c_str(), 0);
             if (!val) {
                 error("can't read \"" + varName + "\": no such variable");
@@ -382,6 +457,7 @@ class ExprParser {
             }
             std::string cmd(start, p_ - start);
             if (*p_ == ']') p_++;
+            if (noEval_) return ExprVal::makeInt(0);
             int rc = Tcl_Eval(interp_, cmd.c_str());
             if (rc != TCL_OK) { code_ = rc; return ExprVal::makeInt(0); }
             const char *val = Tcl_GetStringResult(interp_);

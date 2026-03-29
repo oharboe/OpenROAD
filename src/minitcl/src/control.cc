@@ -342,7 +342,8 @@ static int catchCmd(ClientData, Tcl_Interp *interp, int objc,
 
     if (objc == 3) {
         const char *resultVarName = Tcl_GetString(objv[2]);
-        Tcl_SetVar(interp, resultVarName, Tcl_GetStringResult(interp), 0);
+        const char *res = Tcl_GetStringResult(interp);
+        Tcl_SetVar(interp, resultVarName, res, 0);
     }
 
     Tcl_SetObjResult(interp, Tcl_NewIntObj(code));

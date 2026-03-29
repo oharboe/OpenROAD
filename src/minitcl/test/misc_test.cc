@@ -152,3 +152,23 @@ TEST(MiscTest, AutoPath) {
     EXPECT_STREQ(Tcl_GetStringResult(i), "1");
     Tcl_DeleteInterp(i);
 }
+
+TEST(MiscTest, InfoCompleteChecksAllDelimiters) {
+    Tcl_Interp* i = Tcl_CreateInterp();
+    // Balanced commands are complete
+    ASSERT_EQ(Tcl_Eval(i, "info complete {set x 1}"), TCL_OK);
+    EXPECT_STREQ(Tcl_GetStringResult(i), "1");
+    // Unmatched brace - pass as a C string with literal unmatched {
+    ASSERT_EQ(Tcl_Eval(i, "info complete \"set x \\{\""), TCL_OK);
+    EXPECT_STREQ(Tcl_GetStringResult(i), "0");
+    // Unmatched bracket
+    ASSERT_EQ(Tcl_Eval(i, "info complete {set x [}"), TCL_OK);
+    EXPECT_STREQ(Tcl_GetStringResult(i), "0");
+    // Matched bracket
+    ASSERT_EQ(Tcl_Eval(i, "info complete {set x [foo]}"), TCL_OK);
+    EXPECT_STREQ(Tcl_GetStringResult(i), "1");
+    // Unmatched quote
+    ASSERT_EQ(Tcl_Eval(i, "info complete {set x \"}"), TCL_OK);
+    EXPECT_STREQ(Tcl_GetStringResult(i), "0");
+    Tcl_DeleteInterp(i);
+}

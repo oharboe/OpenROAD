@@ -62,10 +62,17 @@ static bool parseQuoted(const char *&p, std::string &out) {
     if (*p != '"') return false;
     p++;  // skip opening "
     out.clear();
-    while (*p && *p != '"') {
+    int bracketDepth = 0;
+    while (*p && (*p != '"' || bracketDepth > 0)) {
         if (*p == '\\' && *(p + 1)) {
             // Keep the backslash sequence for later substitution
             out += *p++;
+            out += *p++;
+        } else if (*p == '[') {
+            bracketDepth++;
+            out += *p++;
+        } else if (*p == ']' && bracketDepth > 0) {
+            bracketDepth--;
             out += *p++;
         } else {
             out += *p++;

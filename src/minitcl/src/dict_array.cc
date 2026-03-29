@@ -398,8 +398,10 @@ static int infoCmd(ClientData, Tcl_Interp *interp, int objc,
     if (strcmp(sub, "complete") == 0) {
         if (objc != 3) { impl->result = "wrong # args"; return TCL_ERROR; }
         const char *str = Tcl_GetString(objv[2]);
-        // Check if the string is a complete Tcl command (balanced braces/quotes)
+        // Check if the string is a complete Tcl command
+        // (balanced braces, quotes, and brackets)
         int braces = 0;
+        int brackets = 0;
         bool in_quote = false;
         for (const char *p = str; *p; p++) {
             if (*p == '\\' && *(p + 1)) { p++; continue; }
@@ -407,9 +409,14 @@ static int infoCmd(ClientData, Tcl_Interp *interp, int objc,
             if (!in_quote) {
                 if (*p == '{') braces++;
                 else if (*p == '}') braces--;
+                else if (braces == 0) {
+                    if (*p == '[') brackets++;
+                    else if (*p == ']') brackets--;
+                }
             }
         }
-        Tcl_SetObjResult(interp, Tcl_NewIntObj(braces == 0 && !in_quote ? 1 : 0));
+        Tcl_SetObjResult(interp, Tcl_NewIntObj(
+            braces == 0 && brackets == 0 && !in_quote ? 1 : 0));
         return TCL_OK;
     }
 

@@ -54,6 +54,7 @@ _OPENROAD_TCL_TESTS = {
     "tcl_placement": ["//test:regression_resources"],
     "tcl_read_design": ["//test:regression_resources"],
     "tcl_route": ["//test:regression_resources"],
+    "tcl_sdc_test": ["//test:regression_resources"],
     "tcl_smoke": [],
     "tcl_sta_commands": [],
     "tcl_timing": ["//test:regression_resources"],

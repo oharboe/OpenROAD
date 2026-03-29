@@ -377,3 +377,67 @@ TEST(ExprTest, ForWithExpr) {
     EXPECT_STREQ(Tcl_GetVar(interp, "sum", 0), "15");
     Tcl_DeleteInterp(interp);
 }
+
+TEST(ExprTest, ShortCircuitAnd) {
+    Tcl_Interp* interp = Tcl_CreateInterp();
+    // && should short-circuit: right side not evaluated when left is false
+    Tcl_Eval(interp, "proc boom {} { error {should not be called} }");
+    ASSERT_EQ(Tcl_Eval(interp, "expr { 0 && [boom] }"), TCL_OK);
+    EXPECT_STREQ(Tcl_GetStringResult(interp), "0");
+    // Right side evaluated when left is true
+    ASSERT_EQ(Tcl_Eval(interp, "expr { 1 && 1 }"), TCL_OK);
+    EXPECT_STREQ(Tcl_GetStringResult(interp), "1");
+    Tcl_DeleteInterp(interp);
+}
+
+TEST(ExprTest, ShortCircuitOr) {
+    Tcl_Interp* interp = Tcl_CreateInterp();
+    // || should short-circuit: right side not evaluated when left is true
+    Tcl_Eval(interp, "proc boom {} { error {should not be called} }");
+    ASSERT_EQ(Tcl_Eval(interp, "expr { 1 || [boom] }"), TCL_OK);
+    EXPECT_STREQ(Tcl_GetStringResult(interp), "1");
+    // Right side evaluated when left is false
+    ASSERT_EQ(Tcl_Eval(interp, "expr { 0 || 1 }"), TCL_OK);
+    EXPECT_STREQ(Tcl_GetStringResult(interp), "1");
+    Tcl_DeleteInterp(interp);
+}
+
+TEST(ExprTest, TernaryShortCircuit) {
+    Tcl_Interp* interp = Tcl_CreateInterp();
+    Tcl_Eval(interp, "proc boom {} { error {should not be called} }");
+    // True branch taken, false branch not evaluated
+    ASSERT_EQ(Tcl_Eval(interp, "expr { 1 ? 42 : [boom] }"), TCL_OK);
+    EXPECT_STREQ(Tcl_GetStringResult(interp), "42");
+    // False branch taken, true branch not evaluated
+    ASSERT_EQ(Tcl_Eval(interp, "expr { 0 ? [boom] : 99 }"), TCL_OK);
+    EXPECT_STREQ(Tcl_GetStringResult(interp), "99");
+    Tcl_DeleteInterp(interp);
+}
+
+TEST(ExprTest, ArrayVariableInExpr) {
+    Tcl_Interp* interp = Tcl_CreateInterp();
+    // Array access in expr should work (e.g. $::env(VAR) in ORFS scripts)
+    Tcl_Eval(interp, "set arr(x) 42");
+    ASSERT_EQ(Tcl_Eval(interp, "expr { $arr(x) + 1 }"), TCL_OK);
+    EXPECT_STREQ(Tcl_GetStringResult(interp), "43");
+
+    // Global array access with :: prefix
+    Tcl_Eval(interp, "set ::data(key) hello");
+    ASSERT_EQ(Tcl_Eval(interp, "expr { $::data(key) eq \"hello\" }"), TCL_OK);
+    EXPECT_STREQ(Tcl_GetStringResult(interp), "1");
+
+    // Array in if condition (the ORFS pattern)
+    Tcl_Eval(interp, "set ::env_test(KEEP_VARS) 0");
+    ASSERT_EQ(Tcl_Eval(interp,
+        "proc test_if {} { if { $::env_test(KEEP_VARS) } { return yes } else { return no } }\n"
+        "test_if"), TCL_OK);
+    EXPECT_STREQ(Tcl_GetStringResult(interp), "no");
+
+    // Variable substitution inside array index
+    Tcl_Eval(interp, "set idx key");
+    Tcl_Eval(interp, "set myarr(key) 99");
+    ASSERT_EQ(Tcl_Eval(interp, "expr { $myarr($idx) }"), TCL_OK);
+    EXPECT_STREQ(Tcl_GetStringResult(interp), "99");
+
+    Tcl_DeleteInterp(interp);
+}

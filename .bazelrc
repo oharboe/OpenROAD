@@ -122,4 +122,9 @@ build --remote_upload_local_results=false
 # Without this, bazelisk build ... builds the bazel-orfs tests
 build --build_tag_filters=-orfs
 
+# System Tcl: use --config=systemtcl to build with system Tcl instead of
+# minitcl. Requires removing the local_path_override for tcl_lang in
+# MODULE.bazel first (otherwise @tcl_lang still resolves to the minitcl shim).
+build:systemtcl --//src/minitcl:use_minitcl=false
+
 try-import %workspace%/user.bazelrc

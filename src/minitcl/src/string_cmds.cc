@@ -550,12 +550,14 @@ static int concatCmd(ClientData, Tcl_Interp *interp, int objc,
                       Tcl_Obj *const objv[]) {
     std::string result;
     for (int i = 1; i < objc; i++) {
-        if (i > 1) result += ' ';
         // Trim leading/trailing whitespace from each arg
         std::string s = Tcl_GetString(objv[i]);
         size_t start = s.find_first_not_of(" \t\n");
         size_t end = s.find_last_not_of(" \t\n");
-        if (start != std::string::npos) result += s.substr(start, end - start + 1);
+        if (start != std::string::npos) {
+            if (!result.empty()) result += ' ';
+            result += s.substr(start, end - start + 1);
+        }
     }
     Tcl_SetObjResult(interp, Tcl_NewStringObj(result.c_str(), result.size()));
     return TCL_OK;

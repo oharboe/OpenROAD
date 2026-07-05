@@ -31,6 +31,7 @@ or_integration_tests(
     gcd_resize
     insert_buffer
     insert_buffer_hier
+    insert_buffer_hier_bus
     liberty_dont_use
     pin_swap1
     pinswap_flat

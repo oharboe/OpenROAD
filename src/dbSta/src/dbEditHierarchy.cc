@@ -619,6 +619,17 @@ std::string dbEditHierarchy::makeUniqueName(odb::dbModule* module,
     base_name = name;
   }
 
+  // The name is usually derived from a flat net, whose base name may be a
+  // bus bit like "data[5]".  A dbModBTerm/dbModITerm/dbModNet carrying
+  // literal brackets is ambiguous downstream: Verilog emission and name-based
+  // pin lookup (sta::parseBusName) read "data[5]" as a select of a bus
+  // "data" that does not exist in the module, so the port declaration, its
+  // references and the parent instance connection disagree (undriven cones in
+  // the written netlist).  Hierarchical ports and nets created here are
+  // synthetic, so flatten the brackets into plain scalar names instead.
+  std::replace(base_name.begin(), base_name.end(), '[', '_');
+  std::replace(base_name.begin(), base_name.end(), ']', '_');
+
   odb::dbBlock* block = db_network_->block();
   std::string full = block->makeNewNetName(
       module,

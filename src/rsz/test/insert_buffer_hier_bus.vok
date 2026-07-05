@@ -1,0 +1,76 @@
+module top (clk,
+    in,
+    out);
+ input clk;
+ input [7:0] in;
+ output [7:0] out;
+
+ wire n_hier_bus1;
+ wire [5:0] mid;
+
+ BUF_X1 b_hier_bus1 (.A(mid[5]),
+    .Z(n_hier_bus1));
+ leaf_drv u_drv (.clk(clk),
+    .in1(in[5]),
+    .out1(mid[5]));
+ leaf_load u_load1 (.mid_5_(n_hier_bus1),
+    .clk(clk),
+    .in1(mid[5]),
+    .out1(out[5]));
+ leaf_load_u_load2 u_load2 (.mid_5_(n_hier_bus1),
+    .clk(clk),
+    .in1(mid[5]),
+    .out1(out[6]));
+endmodule
+module leaf_drv (clk,
+    in1,
+    out1);
+ input clk;
+ input in1;
+ output out1;
+
+
+ DFF_X1 dff1 (.D(in1),
+    .CK(clk),
+    .Q(out1));
+endmodule
+module leaf_load (mid_5_,
+    clk,
+    in1,
+    out1);
+ input mid_5_;
+ input clk;
+ input in1;
+ output out1;
+
+ wire n1;
+ wire n2;
+
+ AND2_X1 and1 (.A1(n1),
+    .A2(n2),
+    .ZN(out1));
+ BUF_X1 buf1 (.A(mid_5_),
+    .Z(n1));
+ BUF_X1 buf2 (.A(in1),
+    .Z(n2));
+endmodule
+module leaf_load_u_load2 (mid_5_,
+    clk,
+    in1,
+    out1);
+ input mid_5_;
+ input clk;
+ input in1;
+ output out1;
+
+ wire n1;
+ wire n2;
+
+ AND2_X1 and1 (.A1(n1),
+    .A2(n2),
+    .ZN(out1));
+ BUF_X1 buf1 (.A(mid_5_),
+    .Z(n1));
+ BUF_X1 buf2 (.A(in1),
+    .Z(n2));
+endmodule

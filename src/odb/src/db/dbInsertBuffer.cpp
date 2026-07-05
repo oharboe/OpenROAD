@@ -3,6 +3,7 @@
 
 #include "dbInsertBuffer.h"
 
+#include <algorithm>
 #include <cassert>
 #include <cstdint>
 #include <cstring>
@@ -23,6 +24,26 @@
 #include "utl/Logger.h"
 
 namespace odb {
+
+namespace {
+
+// Names for new hierarchical ports and nets are derived from flat net base
+// names, which for a bus bit look like "data[5]".  A synthetic
+// dbModBTerm/dbModITerm/dbModNet carrying literal brackets is ambiguous
+// downstream: Verilog emission and name-based pin lookup (sta::parseBusName)
+// read "data[5]" as a select of a bus "data" that need not exist in the
+// module, so the written netlist disagrees between the port declaration, its
+// references and the parent instance connection (undriven cones in gate-level
+// simulation).  These names are synthetic, so flatten brackets to plain
+// scalar names.
+std::string flattenBrackets(std::string name)
+{
+  std::replace(name.begin(), name.end(), '[', '_');
+  std::replace(name.begin(), name.end(), ']', '_');
+  return name;
+}
+
+}  // namespace
 
 dbInsertBuffer::dbInsertBuffer(dbNet* net)
     : net_(net),
@@ -513,7 +534,8 @@ std::string dbInsertBuffer::makeUniqueHierName(const dbModule* module,
                                                const std::string& base_name,
                                                const char* suffix) const
 {
-  std::string name = (suffix == nullptr) ? base_name : base_name + suffix;
+  std::string name
+      = flattenBrackets((suffix == nullptr) ? base_name : base_name + suffix);
   std::string full = block_->makeNewNetName(
       module, name.c_str(), dbNameUniquifyType::IF_NEEDED_WITH_UNDERSCORE);
   return std::string(block_->getBaseName(full.c_str()));
@@ -1120,7 +1142,7 @@ void dbInsertBuffer::connectSameModule(dbObject* driver,
   } else if (load_net) {
     connect(driver, load_net);
   } else {
-    const char* base_name = "net";
+    std::string base_name = "net";
     dbNet* flat_driver_net = getNet(driver);
     dbNet* flat_load_net = getNet(load);
 
@@ -1129,10 +1151,11 @@ void dbInsertBuffer::connectSameModule(dbObject* driver,
     } else if (flat_load_net) {
       base_name = block_->getBaseName(flat_load_net->getConstName());
     }
+    base_name = flattenBrackets(base_name);
 
     dbNet* flat_net = flat_driver_net ? flat_driver_net : flat_load_net;
     dbModNet* new_modnet
-        = dbModNet::create(driver_mod, base_name, uniquify_, flat_net);
+        = dbModNet::create(driver_mod, base_name.c_str(), uniquify_, flat_net);
     connect(driver, new_modnet);
     connect(load, new_modnet);
   }
@@ -1211,7 +1234,7 @@ dbModBTerm* dbInsertBuffer::findOrCreateTracePort(dbModule* current_mod,
   dbModule* parent_module = mod_net->getParent();
   assert(parent_module == current_mod);
 
-  std::string port_name = mod_net->getName();
+  std::string port_name = flattenBrackets(mod_net->getName());
   dbModInst* mod_inst = current_mod->getModInst();
   if (parent_module->findModBTerm(port_name.c_str()) != nullptr
       || (mod_inst != nullptr

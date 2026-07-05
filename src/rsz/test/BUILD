@@ -40,6 +40,7 @@ TESTS = [
     "gcd_resize",
     "insert_buffer",
     "insert_buffer_hier",
+    "insert_buffer_hier_bus",
     "liberty_dont_use",
     "pinswap_flat",
     "pinswap_hier",

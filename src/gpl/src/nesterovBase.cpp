@@ -1160,6 +1160,7 @@ NesterovBaseVars::NesterovBaseVars(const PlaceOptions& options)
       binCntY(isSetBinCnt ? options.binGridCntY : 0),
       minPhiCoef(options.minPhiCoef),
       maxPhiCoef(options.maxPhiCoef),
+      wirelengthPenalty(options.wirelengthPenalty),
       initialPlacePerturbationSeed(options.initialPlacePerturbationSeed),
       initialPlacePerturbationDist(options.initialPlacePerturbationDist)
 {

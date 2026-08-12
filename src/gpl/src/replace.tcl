@@ -6,6 +6,8 @@ sta::define_cmd_args "global_placement" {\
     [-force_center_initial_place]\
     [-skip_nesterov_place]\
     [-timing_driven]\
+    [-wirelength_penalty wirelength_penalty]\
+    [-timing_weight_span_clock_percent timing_weight_span_clock_percent]\
     [-timing_driven_repair_timing]\
     [-routability_driven]\
     [-virtual_cts]\
@@ -61,6 +63,8 @@ proc global_placement { args } {
       -timing_driven_net_weight_max \
       -timing_driven_nets_percentage \
       -timing_driven_repair_tns_end_percent \
+      -wirelength_penalty \
+      -timing_weight_span_clock_percent \
       -keep_resize_below_overflow \
       -virtual_cts_max_skew_fraction \
       -random_seed \

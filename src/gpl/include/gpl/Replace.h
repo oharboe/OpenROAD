@@ -56,6 +56,8 @@ struct PlaceOptions
   bool skipIoMode = false;
   bool forceCenterInitialPlace = false;
   bool timingDrivenMode = false;
+  float wirelengthPenalty = 1.0;
+  float timingWeightSpanClockPercent = -1.0;
   bool timingDrivenRepairTiming = false;
   float timingDrivenRepairTnsEndPercent = 1.0;
   bool routabilityDrivenMode = false;

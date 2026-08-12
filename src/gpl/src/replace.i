@@ -24,6 +24,8 @@ static gpl::PlaceOptions getOptions(
 
   gpl::PlaceOptions options;
   checkFlag(flags, "-timing_driven", options.timingDrivenMode);
+  checkKey(keys, "-wirelength_penalty", options.wirelengthPenalty);
+  checkKey(keys, "-timing_weight_span_clock_percent", options.timingWeightSpanClockPercent);
   checkFlag(flags, "-timing_driven_repair_timing", options.timingDrivenRepairTiming);
   checkFlag(flags, "-routability_driven", options.routabilityDrivenMode);
   checkFlag(flags, "-virtual_cts", options.virtualCtsMode);

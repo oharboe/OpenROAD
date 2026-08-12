@@ -785,6 +785,7 @@ struct NesterovBaseVars
 
   const float minPhiCoef;
   float maxPhiCoef;  // may be updated after initialization
+  float wirelengthPenalty = 1.0;
   const int initialPlacePerturbationSeed;
   const float initialPlacePerturbationDist;
 

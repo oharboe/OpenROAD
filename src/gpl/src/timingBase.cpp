@@ -180,12 +180,15 @@ bool TimingBase::executeTimingDriven(bool run_journal_restore,
         if (slack_max == slack_min) {
           gNet->setTimingWeight(1.0);
         } else {
-          // weight(min_slack) = net_weight_max_
-          // weight(max_slack) = 1
+          float effective_slack_max = slack_max;
+          if (timing_weight_span_clock_percent_ >= 0.0f) {
+            float clock_period = 1.0f; // placeholder/normalized
+            effective_slack_max = slack_min + (timing_weight_span_clock_percent_ / 100.0f) * clock_period;
+          }
           const float weight = 1
-                               + (net_weight_max_ - 1) * (slack_max - net_slack)
-                                     / (slack_max - slack_min);
-          gNet->setTimingWeight(weight);
+                               + (net_weight_max_ - 1) * (effective_slack_max - net_slack)
+                                     / (effective_slack_max - slack_min);
+          gNet->setTimingWeight(std::max(1.0f, std::min(net_weight_max_, weight)));
         }
         weighted_net_count++;
       }

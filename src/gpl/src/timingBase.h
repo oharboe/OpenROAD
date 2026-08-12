@@ -51,6 +51,10 @@ class TimingBase
   {
     repair_tns_end_percent_ = percent / 100.0f;
   }
+  void setTimingWeightSpanClockPercent(float percent)
+  {
+    timing_weight_span_clock_percent_ = percent;
+  }
 
   // updateNetWeight.
   // True: successfully reweighted gnets
@@ -70,6 +74,7 @@ class TimingBase
   float nets_percentage_ = 10;
   bool repair_timing_ = false;
   float repair_tns_end_percent_ = 0.01;
+  float timing_weight_span_clock_percent_ = -1.0;
   void initTimingOverflowChk();
 };
 
